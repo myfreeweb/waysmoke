@@ -1,0 +1,25 @@
+[package]
+name = "wstk"
+version = "0.0.0"
+authors = ["Greg V <greg@unrelenting.technology>"]
+edition = "2018"
+
+[dependencies]
+# byteorder = "1"
+# typemap = "0.3"
+raw-window-handle = "0.3"
+wayland-client = { version = "0.25", features = ["dlopen"] } # TODO: use pkg-config for non-dlopen >_<
+smithay-client-toolkit = { version = "0.8", default-features = false }
+
+futures = "0.3"
+glib = "0.9"
+
+# iced_futures = { git = "https://github.com/hecrj/iced" }
+# iced_wgpu = { git = "https://github.com/hecrj/iced" }
+# iced_graphics = { git = "https://github.com/hecrj/iced" }
+# iced_native = { git = "https://github.com/hecrj/iced" }
+
+iced_futures =  { path = "../../../hecrj/iced/futures" } #, features = ["gio"] }
+iced_wgpu =     { path = "../../../hecrj/iced/wgpu" }
+iced_graphics = { path = "../../../hecrj/iced/graphics" }
+iced_native =   { path = "../../../hecrj/iced/native" }

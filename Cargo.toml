@@ -1,0 +1,10 @@
+[workspace]
+members = [
+	"wstk",
+	"shell",
+]
+
+[profile.release]
+lto = "thin"
+opt-level = "s"
+panic = "abort"

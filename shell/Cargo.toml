@@ -1,0 +1,11 @@
+[package]
+name = "waysmoke-shell"
+version = "2020.5.0"
+authors = ["Greg V <greg@unrelenting.technology>"]
+edition = "2018"
+
+[dependencies]
+futures = "0.3"
+glib = "0.9"
+
+wstk = { path = "../wstk" }
