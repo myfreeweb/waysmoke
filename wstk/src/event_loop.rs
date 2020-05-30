@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
     let fd = event_queue.display().get_connection_fd();
     glib::source::unix_fd_add_local(fd, glib::IOCondition::IN, move |_fd, _ioc| {
+        eprintln!("wayland ready");
         event_queue.dispatch(&mut (), |_, _, _| {}).unwrap();
         glib::Continue(true)
     });
@@ -38,7 +39,7 @@ where
     obj.quick_assign(move |_, event, _| {
         if let Ok(_) = txc.take().unwrap().send(event) {
         } else {
-            eprintln!("Event-to-oneshot-channel send with no receiver?");
+            // eprintln!("Event-to-oneshot-channel send with no receiver?");
         }
         ()
     });

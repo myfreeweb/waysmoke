@@ -7,7 +7,7 @@ use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
     get_surface_scale_factor, init_default_environment,
     reexports::{
-        client::protocol::{wl_pointer, wl_surface}, //{wl_display, wl_keyboard, wl_output, wl_shm, },
+        client::protocol::{wl_callback, wl_pointer, wl_surface}, //{wl_display, wl_keyboard, wl_output, wl_shm, },
         client::{ConnectError, Display},
     },
 };
@@ -16,9 +16,9 @@ use iced_graphics::window::Compositor;
 use iced_native::{mouse, Cache, Command, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
+use core::pin::Pin;
+use futures::{channel::*, future, pin_mut, prelude::*};
 use std::sync::Arc;
-// use core::pin::Pin;
-use futures::{channel::mpsc, prelude::*};
 
 use crate::{event_loop::*, handle::*};
 
@@ -36,14 +36,6 @@ pub fn make_env() -> Result<(Environment<Env>, Display, EventQueue), ConnectErro
 }
 
 static mut SCALE_CHANNELS: Vec<(wl_surface::WlSurface, mpsc::UnboundedSender<i32>)> = Vec::new();
-
-// pub struct NoFuture;
-// impl Future for NoFuture {
-//     type Output = ();
-//     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
-//         Poll::Pending
-//     }
-// }
 
 pub trait DesktopWidget {
     fn setup_lsh(&self, layer_surface: &Main<layer_surface::ZwlrLayerSurfaceV1>);
@@ -64,13 +56,17 @@ pub struct IcedInstance<T> {
     // wayland handles
     env: Environment<Env>,
     // display: Display,
-    wl_surface: wl_surface::WlSurface,
+    wl_surface: Main<wl_surface::WlSurface>,
     layer_surface: Main<layer_surface::ZwlrLayerSurfaceV1>,
     scale_rx: mpsc::UnboundedReceiver<i32>,
 
     // wayland state
     ptr_active: bool,
     scale: i32,
+    frame_cb: Option<(
+        Main<wl_callback::WlCallback>,
+        future::Fuse<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    )>,
 
     // iced render state
     cache: Cache,
@@ -79,6 +75,7 @@ pub struct IcedInstance<T> {
     renderer: <WgpuCompositor as Compositor>::Renderer,
     gpu_surface: <WgpuCompositor as Compositor>::Surface,
     swap_chain: Option<<WgpuCompositor as Compositor>::SwapChain>,
+    event_queue: Vec<iced_native::Event>,
 }
 
 impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
@@ -96,7 +93,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                 .unwrap();
         });
         unsafe {
-            SCALE_CHANNELS.push((wl_surface.clone(), scale_tx));
+            SCALE_CHANNELS.push((wl_surface.detach(), scale_tx));
         }
 
         let layer_surface = layer_shell.get_layer_surface(
@@ -107,7 +104,9 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         );
         widget.setup_lsh(&layer_surface);
 
-        let mut compositor = WgpuCompositor::request(iced_wgpu::Settings::default()).await.unwrap();
+        let mut compositor = WgpuCompositor::request(iced_wgpu::Settings::default())
+            .await
+            .unwrap();
         let renderer = iced_wgpu::Renderer::new(compositor.create_backend());
         let gpu_surface =
             compositor.create_surface(&ToRWH((*wl_surface.as_ref()).clone(), (*display).clone()));
@@ -123,16 +122,30 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             scale_rx,
             ptr_active: false,
             scale: 1,
+            frame_cb: None,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             compositor,
             renderer,
             gpu_surface,
             swap_chain: None,
+            event_queue: Vec::new(),
         }
     }
 
-    async fn render(&mut self, mut events: Vec<iced_native::Event>) {
+    fn enqueue(&mut self, event: iced_native::Event) {
+        eprintln!("ENQ {:?} fcb: {}", event, self.frame_cb.is_some());
+        self.event_queue.push(event);
+
+        if self.frame_cb.is_none() {
+            let fcb = self.wl_surface.frame();
+            let chan = wayland_event_chan_oneshot(&fcb).map(|_| ()).boxed().fuse();
+            self.frame_cb = Some((fcb, chan));
+            self.wl_surface.commit();
+        }
+    }
+
+    async fn render(&mut self) {
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
         let mut user_interface = UserInterface::build(
@@ -141,7 +154,8 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             self.cache.clone(),
             &mut self.renderer,
         );
-        let messages = user_interface.update(events.drain(..), None, &mut self.renderer);
+        eprintln!("RENDER: {:?}", self.event_queue);
+        let messages = user_interface.update(self.event_queue.drain(..), None, &mut self.renderer);
         let viewport = iced_graphics::Viewport::with_physical_size(
             iced_graphics::Size::new(
                 self.size.width as u32 * self.scale as u32,
@@ -203,7 +217,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         }
         self.scale = scale;
         self.create_swap_chain();
-        self.render(vec![]).await;
+        self.render().await;
     }
 
     async fn on_layer_event(&mut self, event: Arc<layer_surface::Event>) {
@@ -218,7 +232,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                 self.scale = get_surface_scale_factor(&self.wl_surface);
                 self.size = Size::new((*width) as f32, (*height) as f32);
                 self.create_swap_chain();
-                self.render(vec![]).await;
+                self.render().await;
             }
             _ => eprintln!("todo: lsh close"),
         }
@@ -227,12 +241,12 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
     async fn on_pointer_event(&mut self, event: Arc<wl_pointer::Event>) {
         match &*event {
             wl_pointer::Event::Enter { surface, .. } => {
-                if self.wl_surface == *surface {
+                if self.wl_surface.detach() == *surface {
                     self.ptr_active = true;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
-                if self.wl_surface == *surface {
+                if self.wl_surface.detach() == *surface {
                     self.ptr_active = false;
                 }
             }
@@ -245,12 +259,11 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                         x if x > 0x110 => mouse::Button::Other((x - 0x110) as u8),
                         _ => panic!("low button event code"),
                     };
-                    self.render(vec![iced_native::Event::Mouse(match state {
+                    self.enqueue(iced_native::Event::Mouse(match state {
                         wl_pointer::ButtonState::Pressed => mouse::Event::ButtonPressed(btn),
                         wl_pointer::ButtonState::Released => mouse::Event::ButtonReleased(btn),
                         _ => panic!("new button state?"),
-                    })])
-                    .await;
+                    }));
                 }
             }
             wl_pointer::Event::Motion {
@@ -259,13 +272,10 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                 ..
             } => {
                 if self.ptr_active {
-                    self.render(vec![iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                    self.enqueue(iced_native::Event::Mouse(mouse::Event::CursorMoved {
                         x: *surface_x as _,
                         y: *surface_y as _,
-                    })])
-                    .await;
-
-                    // frame_cb = Some(wl_surface.frame());
+                    }));
                 }
             }
             wl_pointer::Event::Frame { .. } => {
@@ -283,10 +293,20 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         let mut layer_events = wayland_event_chan(&self.layer_surface);
 
         loop {
+            let (mut cb, mut frame_handler) =
+                if let Some((cb, fut)) = self.frame_cb.take() {
+                    (Some(cb), fut)
+                } else {
+                    (None, future::pending::<()>().boxed().fuse())
+                };
             futures::select! {
+                () = frame_handler => { cb = None; self.frame_cb = None; self.render().await; },
                 ev = layer_events.next() => if let Some(event) = ev { self.on_layer_event(event).await },
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
                 sc = self.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
+            }
+            if let Some(cb) = cb {
+                self.frame_cb = Some((cb, frame_handler))
             }
         }
     }
