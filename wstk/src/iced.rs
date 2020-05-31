@@ -248,11 +248,13 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 if self.wl_surface.detach() == *surface {
                     self.ptr_active = true;
                     self.widget.on_pointer_enter().await;
+                    self.render(vec![]).await;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
                     self.widget.on_pointer_leave().await;
+                    self.render(vec![]).await;
                     self.ptr_active = false;
                 }
             }
@@ -284,8 +286,6 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                         y: *surface_y as _,
                     })])
                     .await;
-
-                    // frame_cb = Some(wl_surface.frame());
                 }
             }
             wl_pointer::Event::Frame { .. } => {

@@ -22,3 +22,6 @@ wayland-protocols = { path = "../../Smithay/wayland-rs/wayland-protocols/" }
 # patch: transparency
 wgpu-core  = { path = "../../gfx-rs/wgpu/wgpu-core/" }
 wgpu-types = { path = "../../gfx-rs/wgpu/wgpu-types/" }
+
+# patch: bsd
+usvg = { path = "../../RazrFalcon/resvg/usvg/" }
