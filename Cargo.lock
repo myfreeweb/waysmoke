@@ -1638,7 +1638,6 @@ dependencies = [
 name = "waysmoke-shell"
 version = "2020.5.0"
 dependencies = [
- "async-trait",
  "futures",
  "glib",
  "wstk",

@@ -16,8 +16,13 @@ use iced_graphics::window::Compositor;
 use iced_native::{mouse, Cache, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
-use futures::{channel::mpsc, prelude::*};
+use core::marker::Unpin;
 use std::sync::Arc;
+
+use futures::channel::mpsc;
+pub use futures::prelude::*;
+
+pub use async_trait::async_trait;
 
 use crate::{event_loop::*, handle::*};
 
@@ -42,12 +47,14 @@ pub trait DesktopWidget {
 
 pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Renderer>;
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait IcedWidget {
     type Message: std::fmt::Debug + Send;
+    type ExternalEvent: std::fmt::Debug + Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
     async fn update(&mut self, message: Self::Message);
+    async fn react(&mut self, event: Self::ExternalEvent);
 
     async fn on_rendered(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
     async fn on_pointer_enter(&mut self) {}
@@ -195,6 +202,8 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         }
 
         self.widget.on_rendered(self.layer_surface.detach()).await;
+        self.wl_surface.commit();
+        // double commit, vulkan does the first one for us..
     }
 
     fn create_swap_chain(&mut self) {
@@ -288,7 +297,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         }
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&mut self, ext_evt_src: &mut (impl Stream<Item = T::ExternalEvent> + Unpin)) {
         let seat = &self.env.get_all_seats()[0];
         let mut ptr_events = wayland_event_chan(&seat.get_pointer());
         let mut layer_events = wayland_event_chan(&self.layer_surface);
@@ -298,6 +307,10 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 ev = layer_events.next() => if let Some(event) = ev { self.on_layer_event(event).await },
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
                 sc = self.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
+                ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
+                    self.widget.react(event).await;
+                    self.render(vec![]).await
+                }
             }
         }
     }

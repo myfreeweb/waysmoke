@@ -6,6 +6,11 @@ enum TestMsg {
     DecrementPressed,
 }
 
+#[derive(Debug, Clone)]
+enum TestExtEvt {
+    Sig,
+}
+
 #[derive(Default)]
 struct Test {
     value: i32,
@@ -40,9 +45,10 @@ impl container::StyleSheet for Kontainer {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl IcedWidget for Test {
     type Message = TestMsg;
+    type ExternalEvent = TestExtEvt;
 
     fn view(&mut self) -> Element<TestMsg> {
         use iced_native::*;
@@ -80,6 +86,10 @@ impl IcedWidget for Test {
         }
     }
 
+    async fn react(&mut self, _event: TestExtEvt) {
+        self.value += 10;
+    }
+
     async fn on_rendered(&mut self, ls: layer_surface::ZwlrLayerSurfaceV1) {
         ls.set_exclusive_zone(self.value);
     }
@@ -102,9 +112,9 @@ async fn main(env: Environment<Env>, display: WlDisplay, queue: &EventQueue) {
 
     let mut test = IcedInstance::new(Test::default(), env.clone(), display.clone(), queue).await;
     // let mut test2 = IcedInstance::new(Test::default(), env.clone(), display.clone(), queue).await;
-
+    let mut pend = glib::unix_signal_stream(30).map(|()| TestExtEvt::Sig);
     futures::join!(
-        test.run(),
+        test.run(&mut pend),
         // test2.run(),
     );
 }
