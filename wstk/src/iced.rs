@@ -13,7 +13,7 @@ use smithay_client_toolkit::{
 };
 
 use iced_graphics::window::Compositor;
-use iced_native::{mouse, Cache, Command, Size, UserInterface};
+use iced_native::{mouse, Cache, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
 use futures::{channel::mpsc, prelude::*};
@@ -42,11 +42,16 @@ pub trait DesktopWidget {
 
 pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Renderer>;
 
+#[async_trait::async_trait]
 pub trait IcedWidget {
     type Message: std::fmt::Debug + Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message>;
+    async fn update(&mut self, message: Self::Message);
+
+    async fn on_rendered(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
+    async fn on_pointer_enter(&mut self) {}
+    async fn on_pointer_leave(&mut self) {}
 }
 
 pub struct IcedInstance<T> {
@@ -72,7 +77,7 @@ pub struct IcedInstance<T> {
     swap_chain: Option<<WgpuCompositor as Compositor>::SwapChain>,
 }
 
-impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
+impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
     pub async fn new(
         widget: T,
         env: Environment<Env>,
@@ -169,9 +174,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             let temp_cache = user_interface.into_cache();
 
             for message in messages {
-                for f in self.widget.update(message).futures() {
-                    f.await;
-                }
+                self.widget.update(message).await;
             }
 
             let user_interface = UserInterface::build(
@@ -190,6 +193,8 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             );
             self.cache = user_interface.into_cache();
         }
+
+        self.widget.on_rendered(self.layer_surface.detach()).await;
     }
 
     fn create_swap_chain(&mut self) {
@@ -233,10 +238,12 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             wl_pointer::Event::Enter { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
                     self.ptr_active = true;
+                    self.widget.on_pointer_enter().await;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
+                    self.widget.on_pointer_leave().await;
                     self.ptr_active = false;
                 }
             }

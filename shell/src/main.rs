@@ -40,6 +40,7 @@ impl container::StyleSheet for Kontainer {
     }
 }
 
+#[async_trait::async_trait]
 impl IcedWidget for Test {
     type Message = TestMsg;
 
@@ -68,7 +69,7 @@ impl IcedWidget for Test {
             .into()
     }
 
-    fn update(&mut self, message: TestMsg) -> iced_native::Command<TestMsg> {
+    async fn update(&mut self, message: TestMsg) {
         match message {
             TestMsg::IncrementPressed => {
                 self.value += 1;
@@ -77,10 +78,10 @@ impl IcedWidget for Test {
                 self.value -= 1;
             }
         }
-        iced_native::Command::from(async {
-            glib::timeout_future_seconds(1).await;
-            TestMsg::IncrementPressed
-        })
+    }
+
+    async fn on_rendered(&mut self, ls: layer_surface::ZwlrLayerSurfaceV1) {
+        ls.set_exclusive_zone(self.value);
     }
 }
 

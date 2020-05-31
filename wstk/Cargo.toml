@@ -11,6 +11,7 @@ raw-window-handle = "0.3"
 wayland-client = { version = "0.26", features = ["use_system_lib"] }
 smithay-client-toolkit = { version = "0.9", default-features = false }
 
+async-trait = "0.1"
 futures = "0.3"
 glib = "0.9"
 
