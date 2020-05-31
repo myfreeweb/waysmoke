@@ -16,12 +16,27 @@ struct Test {
 impl DesktopWidget for Test {
     fn setup_lsh(&self, layer_surface: &Main<layer_surface::ZwlrLayerSurfaceV1>) {
         layer_surface.set_anchor(
-            layer_surface::Anchor::Top
+            layer_surface::Anchor::Left
                 | layer_surface::Anchor::Right
                 | layer_surface::Anchor::Bottom,
         );
-        layer_surface.set_size(90, 0);
-        layer_surface.set_exclusive_zone(90);
+        layer_surface.set_size(0, 34);
+        // layer_surface.set_exclusive_zone(24);
+    }
+}
+
+use iced_graphics::*;
+pub struct Kontainer;
+
+impl container::StyleSheet for Kontainer {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: Some(iced_core::Background::Color(iced_core::Color::from_rgba8(
+                0x36, 0x39, 0x3F, 0.3,
+            ))),
+            text_color: Some(iced_core::Color::WHITE),
+            ..container::Style::default()
+        }
     }
 }
 
@@ -31,18 +46,25 @@ impl IcedWidget for Test {
     fn view(&mut self) -> Element<TestMsg> {
         use iced_native::*;
 
-        Column::new()
-            .padding(20)
+        let row = Row::new()
             .align_items(Align::Center)
+            .padding(2)
             .push(
                 Button::new(&mut self.increment_button, Text::new("Incr"))
                     .on_press(TestMsg::IncrementPressed),
             )
-            .push(Text::new(self.value.to_string()).size(50))
+            .push(Text::new(self.value.to_string()).size(20))
             .push(
                 Button::new(&mut self.decrement_button, Text::new("Decr"))
                     .on_press(TestMsg::DecrementPressed),
-            )
+            );
+
+        Container::new(row)
+            .style(Kontainer)
+            // .width(Length::Fill)
+            // .height(Length::Fill)
+            .center_x()
+            .center_y()
             .into()
     }
 
@@ -55,12 +77,15 @@ impl IcedWidget for Test {
                 self.value -= 1;
             }
         }
-        iced_native::Command::none()
+        iced_native::Command::from(async {
+            glib::timeout_future_seconds(1).await;
+            TestMsg::IncrementPressed
+        })
     }
 }
 
 wstk_main! {
-async fn main(env: Environment<Env>, display: WlDisplay) {
+async fn main(env: Environment<Env>, display: WlDisplay, queue: &EventQueue) {
     // TODO: multi-monitor handling
     // let output_handler = move |output: wl_output::WlOutput, info: &OutputInfo| {
     //     eprintln!("Output {:?}", info);
@@ -74,12 +99,12 @@ async fn main(env: Environment<Env>, display: WlDisplay) {
     //     }
     // }
 
-    let mut test = IcedInstance::new(Test::default(), env.clone(), display.clone()).await;
-    let mut test2 = IcedInstance::new(Test::default(), env.clone(), display.clone()).await;
+    let mut test = IcedInstance::new(Test::default(), env.clone(), display.clone(), queue).await;
+    // let mut test2 = IcedInstance::new(Test::default(), env.clone(), display.clone(), queue).await;
 
     futures::join!(
         test.run(),
-        test2.run(),
+        // test2.run(),
     );
 }
 }

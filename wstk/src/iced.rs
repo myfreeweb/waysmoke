@@ -8,7 +8,7 @@ use smithay_client_toolkit::{
     get_surface_scale_factor, init_default_environment,
     reexports::{
         client::protocol::{wl_pointer, wl_surface}, //{wl_display, wl_keyboard, wl_output, wl_shm, },
-        client::{ConnectError, Display},
+        client::{Attached, ConnectError, Display, Proxy},
     },
 };
 
@@ -16,9 +16,8 @@ use iced_graphics::window::Compositor;
 use iced_native::{mouse, Cache, Command, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
-use std::sync::Arc;
-// use core::pin::Pin;
 use futures::{channel::mpsc, prelude::*};
+use std::sync::Arc;
 
 use crate::{event_loop::*, handle::*};
 
@@ -36,14 +35,6 @@ pub fn make_env() -> Result<(Environment<Env>, Display, EventQueue), ConnectErro
 }
 
 static mut SCALE_CHANNELS: Vec<(wl_surface::WlSurface, mpsc::UnboundedSender<i32>)> = Vec::new();
-
-// pub struct NoFuture;
-// impl Future for NoFuture {
-//     type Output = ();
-//     fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
-//         Poll::Pending
-//     }
-// }
 
 pub trait DesktopWidget {
     fn setup_lsh(&self, layer_surface: &Main<layer_surface::ZwlrLayerSurfaceV1>);
@@ -64,7 +55,7 @@ pub struct IcedInstance<T> {
     // wayland handles
     env: Environment<Env>,
     // display: Display,
-    wl_surface: wl_surface::WlSurface,
+    wl_surface: Attached<wl_surface::WlSurface>,
     layer_surface: Main<layer_surface::ZwlrLayerSurfaceV1>,
     scale_rx: mpsc::UnboundedReceiver<i32>,
 
@@ -82,21 +73,29 @@ pub struct IcedInstance<T> {
 }
 
 impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
-    pub async fn new(widget: T, env: Environment<Env>, display: Display) -> IcedInstance<T> {
+    pub async fn new(
+        widget: T,
+        env: Environment<Env>,
+        display: Display,
+        queue: &EventQueue,
+    ) -> IcedInstance<T> {
         let layer_shell = env.require_global::<layer_shell::ZwlrLayerShellV1>();
 
         let (scale_tx, scale_rx) = mpsc::unbounded();
-        let wl_surface = env.create_surface_with_scale_callback(|scale, wlsurf, _dd| unsafe {
-            SCALE_CHANNELS
-                .iter()
-                .find(|(surf, _)| *surf == wlsurf)
-                .unwrap()
-                .1
-                .unbounded_send(scale)
-                .unwrap();
-        });
+        let wl_surface: Proxy<wl_surface::WlSurface> = env
+            .create_surface_with_scale_callback(|scale, wlsurf, _dd| unsafe {
+                SCALE_CHANNELS
+                    .iter()
+                    .find(|(surf, _)| *surf == wlsurf)
+                    .unwrap()
+                    .1
+                    .unbounded_send(scale)
+                    .unwrap();
+            })
+            .into();
+        let wl_surface = wl_surface.attach(queue.token());
         unsafe {
-            SCALE_CHANNELS.push((wl_surface.clone(), scale_tx));
+            SCALE_CHANNELS.push((wl_surface.detach(), scale_tx));
         }
 
         let layer_surface = layer_shell.get_layer_surface(
@@ -107,7 +106,12 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         );
         widget.setup_lsh(&layer_surface);
 
-        let mut compositor = WgpuCompositor::request(iced_wgpu::Settings::default()).await.unwrap();
+        let mut compositor = WgpuCompositor::request(iced_wgpu::Settings {
+            background_color: iced_core::Color::TRANSPARENT,
+            ..iced_wgpu::Settings::default()
+        })
+        .await
+        .unwrap();
         let renderer = iced_wgpu::Renderer::new(compositor.create_backend());
         let gpu_surface =
             compositor.create_surface(&ToRWH((*wl_surface.as_ref()).clone(), (*display).clone()));
@@ -227,12 +231,12 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
     async fn on_pointer_event(&mut self, event: Arc<wl_pointer::Event>) {
         match &*event {
             wl_pointer::Event::Enter { surface, .. } => {
-                if self.wl_surface == *surface {
+                if self.wl_surface.detach() == *surface {
                     self.ptr_active = true;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
-                if self.wl_surface == *surface {
+                if self.wl_surface.detach() == *surface {
                     self.ptr_active = false;
                 }
             }

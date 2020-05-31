@@ -8,3 +8,17 @@ members = [
 lto = "thin"
 opt-level = "s"
 panic = "abort"
+
+[patch.crates-io]
+
+# patch: pkg-config (merged)
+wayland-client    = { path = "../../Smithay/wayland-rs/wayland-client/" }
+wayland-cursor    = { path = "../../Smithay/wayland-rs/wayland-cursor/" }
+wayland-sys       = { path = "../../Smithay/wayland-rs/wayland-sys/" }
+wayland-scanner   = { path = "../../Smithay/wayland-rs/wayland-scanner/" }
+wayland-protocols = { path = "../../Smithay/wayland-rs/wayland-protocols/" }
+
+# note: v0.5 branch
+# patch: transparency
+wgpu-core  = { path = "../../gfx-rs/wgpu/wgpu-core/" }
+wgpu-types = { path = "../../gfx-rs/wgpu/wgpu-types/" }

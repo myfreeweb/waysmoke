@@ -549,9 +549,9 @@ dependencies = [
 
 [[package]]
 name = "gfx-backend-dx12"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37365e2927d55cefac0d3f78dfd1d3119fbb13a8bd7afe2409d729961fee22fc"
+checksum = "69af46bd4fc5479cc7d90bf77ccee0da5dd88d4d27b87986a582f9eec97d02d4"
 dependencies = [
  "bitflags",
  "d3d12",
@@ -961,6 +961,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "5.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b471253da97532da4b61552249c521e01e736071f71c1a4f7ebbfbf0a06aad6"
+dependencies = [
+ "memchr",
+ "version_check",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1360,9 +1370,9 @@ checksum = "c7cb5678e1615754284ec264d9bb5b4c27d2018577fd90ac0ceb578591ed5ee4"
 
 [[package]]
 name = "smithay-client-toolkit"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "505508d8f25a4439e122f39164700ca030cd3c7eb318a41a12633f330443d661"
+checksum = "d50df951a0f057399a535c79d082d9d075578ed468498b51c76ff1562afe1d30"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -1404,9 +1414,9 @@ checksum = "8fb1df15f412ee2e9dfc1c504260fa695c1c3f10fe9f4a6ee2d2184d7d6450e2"
 
 [[package]]
 name = "syn"
-version = "1.0.28"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7e33a62f20d3dc02a1bc9c1d385f92b459bbf35e4dc325eed20c53db5b90c03"
+checksum = "bb37da98a55b1d08529362d9cbb863be17556873df2585904ab9d2bc951291d0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1457,6 +1467,12 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
+
+[[package]]
+name = "version_check"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
 
 [[package]]
 name = "void"
@@ -1549,9 +1565,7 @@ checksum = "c9ba19973a58daf4db6f352eda73dc0e289493cd29fb2632eb172085b6521acd"
 
 [[package]]
 name = "wayland-client"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a42cb608953ec8e132c7f53fde722cca9bfbf8b2071d685dbbb8df2b567fee8b"
+version = "0.26.6"
 dependencies = [
  "bitflags",
  "downcast-rs",
@@ -1565,9 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "wayland-commons"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8caa2f106138cf71358c6a9e84468e4406069cec93cbd6dbfce92225fc175932"
+version = "0.26.6"
 dependencies = [
  "nix",
  "once_cell",
@@ -1577,19 +1589,16 @@ dependencies = [
 
 [[package]]
 name = "wayland-cursor"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d774f69a6a4a9eac6d1a29cea45a4750ee7f997520421b2068f099a11b4cbba"
+version = "0.26.6"
 dependencies = [
+ "nix",
  "wayland-client",
- "wayland-sys",
+ "xcursor",
 ]
 
 [[package]]
 name = "wayland-protocols"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f784a990d5fa6d846fa93eb8d3bb744ff1e6ec60c7f785b0a0ee2f1a1f20bee9"
+version = "0.26.6"
 dependencies = [
  "bitflags",
  "wayland-client",
@@ -1599,9 +1608,7 @@ dependencies = [
 
 [[package]]
 name = "wayland-scanner"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f45ddc08a8078f3efa96b5f413268cc9c53b30712891de081fbc1d5846fbc736"
+version = "0.26.6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1610,12 +1617,10 @@ dependencies = [
 
 [[package]]
 name = "wayland-sys"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80f9fc64f9045ad5ff491886a9460437655353e8be73c1b3f29f569342553319"
+version = "0.26.6"
 dependencies = [
  "dlib",
- "lazy_static",
+ "pkg-config",
 ]
 
 [[package]]
@@ -1655,8 +1660,6 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.5.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b093098e0782b0f46f154fac5c670ba27b7a5bff98dc943422c13852c696a2b0"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -1697,8 +1700,6 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3474b5ce2ed628e158c2fe4387a469b2ee119604556aa2debd10d830cedc3bc"
 dependencies = [
  "bitflags",
  "peek-poke",
@@ -1762,6 +1763,7 @@ version = "0.0.0"
 dependencies = [
  "futures",
  "glib",
+ "iced_core",
  "iced_futures",
  "iced_graphics",
  "iced_native",
@@ -1779,6 +1781,15 @@ checksum = "77ecd092546cb16f25783a5451538e73afc8d32e242648d54f4ae5459ba1e773"
 dependencies = [
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "xcursor"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56edec90b342d0f46d1189f3fd4a3374954636f3d76c861855b675efc7ef1435"
+dependencies = [
+ "nom",
 ]
 
 [[package]]
