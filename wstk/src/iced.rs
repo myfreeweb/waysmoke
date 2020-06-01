@@ -13,7 +13,7 @@ use smithay_client_toolkit::{
 };
 
 use iced_graphics::window::Compositor;
-use iced_native::{mouse, Cache, Size, UserInterface};
+use iced_native::{mouse, Cache, Size, UserInterface, Damage};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
 use core::marker::Unpin;
@@ -82,6 +82,8 @@ pub struct IcedInstance<T> {
     renderer: <WgpuCompositor as Compositor>::Renderer,
     gpu_surface: <WgpuCompositor as Compositor>::Surface,
     swap_chain: Option<<WgpuCompositor as Compositor>::SwapChain>,
+
+    prev_prim: iced_graphics::Primitive,
 }
 
 impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
@@ -145,6 +147,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
             renderer,
             gpu_surface,
             swap_chain: None,
+            prev_prim: iced_graphics::Primitive::None,
         }
     }
 
@@ -167,12 +170,18 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         );
 
         if messages.is_empty() {
-            let primitive = user_interface.draw(&mut self.renderer);
+            let (primitive, mi) = user_interface.draw(&mut self.renderer);
+            let dmg = self.prev_prim.damage(&primitive);
+            self.prev_prim = primitive.clone();
+            if dmg == None || dmg.map(|x| x.len()).unwrap_or(0) == 0 {
+                self.cache = user_interface.into_cache();
+                return;
+            }
             let _new_mouse_cursor = self.compositor.draw::<String>(
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
-                &primitive,
+                &(primitive, mi),
                 &[],
             );
             self.cache = user_interface.into_cache();
@@ -190,12 +199,18 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 temp_cache,
                 &mut self.renderer,
             );
-            let primitive = user_interface.draw(&mut self.renderer);
+            let (primitive, mi) = user_interface.draw(&mut self.renderer);
+            let dmg = self.prev_prim.damage(&primitive);
+            self.prev_prim = primitive.clone();
+            if dmg == None || dmg.map(|x| x.len()).unwrap_or(0) == 0 {
+                self.cache = user_interface.into_cache();
+                return;
+            }
             let _new_mouse_cursor = self.compositor.draw::<String>(
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
-                &primitive,
+                &(primitive, mi),
                 &[],
             );
             self.cache = user_interface.into_cache();
