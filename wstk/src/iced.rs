@@ -13,7 +13,7 @@ use smithay_client_toolkit::{
 };
 
 use iced_graphics::window::Compositor;
-use iced_native::{mouse, Cache, Size, UserInterface, Damage};
+use iced_native::{mouse, Cache, Damage, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
 use core::marker::Unpin;
@@ -55,10 +55,10 @@ pub trait IcedWidget {
     fn view(&mut self) -> Element<'_, Self::Message>;
     async fn update(&mut self, message: Self::Message);
     async fn react(&mut self, event: Self::ExternalEvent);
+    // TODO: ExternalEvent | IcedEvent | LshEvent
 
-    async fn on_rendered(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
-    async fn on_pointer_enter(&mut self) {}
-    async fn on_pointer_leave(&mut self) {}
+    async fn on_pointer_enter(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
+    async fn on_pointer_leave(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
 }
 
 pub struct IcedInstance<T> {
@@ -82,8 +82,8 @@ pub struct IcedInstance<T> {
     renderer: <WgpuCompositor as Compositor>::Renderer,
     gpu_surface: <WgpuCompositor as Compositor>::Surface,
     swap_chain: Option<<WgpuCompositor as Compositor>::SwapChain>,
-
     prev_prim: iced_graphics::Primitive,
+    queue: Vec<iced_native::Event>,
 }
 
 impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
@@ -148,10 +148,11 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
             gpu_surface,
             swap_chain: None,
             prev_prim: iced_graphics::Primitive::None,
+            queue: Vec::new(),
         }
     }
 
-    async fn render(&mut self, mut events: Vec<iced_native::Event>) {
+    async fn render(&mut self) {
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
         let mut user_interface = UserInterface::build(
@@ -160,7 +161,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
             self.cache.clone(),
             &mut self.renderer,
         );
-        let messages = user_interface.update(events.drain(..), None, &mut self.renderer);
+        let messages = user_interface.update(self.queue.drain(..), None, &mut self.renderer);
         let viewport = iced_graphics::Viewport::with_physical_size(
             iced_graphics::Size::new(
                 self.size.width as u32 * self.scale as u32,
@@ -215,10 +216,6 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
             );
             self.cache = user_interface.into_cache();
         }
-
-        self.widget.on_rendered(self.layer_surface.detach()).await;
-        self.wl_surface.commit();
-        // double commit, vulkan does the first one for us..
     }
 
     fn create_swap_chain(&mut self) {
@@ -236,7 +233,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         }
         self.scale = scale;
         self.create_swap_chain();
-        self.render(vec![]).await;
+        self.render().await;
     }
 
     async fn on_layer_event(&mut self, event: Arc<layer_surface::Event>) {
@@ -251,7 +248,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 self.scale = get_surface_scale_factor(&self.wl_surface);
                 self.size = Size::new((*width) as f32, (*height) as f32);
                 self.create_swap_chain();
-                self.render(vec![]).await;
+                self.render().await;
             }
             _ => eprintln!("todo: lsh close"),
         }
@@ -261,16 +258,20 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         match &*event {
             wl_pointer::Event::Enter { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
+                    self.widget
+                        .on_pointer_enter(self.layer_surface.detach())
+                        .await;
                     self.ptr_active = true;
-                    self.widget.on_pointer_enter().await;
-                    self.render(vec![]).await;
+                    self.wl_surface.commit();
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
-                    self.widget.on_pointer_leave().await;
-                    self.render(vec![]).await;
+                    self.widget
+                        .on_pointer_leave(self.layer_surface.detach())
+                        .await;
                     self.ptr_active = false;
+                    self.wl_surface.commit();
                 }
             }
             wl_pointer::Event::Button { button, state, .. } => {
@@ -282,12 +283,11 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                         x if x > 0x110 => mouse::Button::Other((x - 0x110) as u8),
                         _ => panic!("low button event code"),
                     };
-                    self.render(vec![iced_native::Event::Mouse(match state {
+                    self.queue.push(iced_native::Event::Mouse(match state {
                         wl_pointer::ButtonState::Pressed => mouse::Event::ButtonPressed(btn),
                         wl_pointer::ButtonState::Released => mouse::Event::ButtonReleased(btn),
                         _ => panic!("new button state?"),
-                    })])
-                    .await;
+                    }));
                 }
             }
             wl_pointer::Event::Motion {
@@ -296,15 +296,15 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 ..
             } => {
                 if self.ptr_active {
-                    self.render(vec![iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                        x: *surface_x as _,
-                        y: *surface_y as _,
-                    })])
-                    .await;
+                    self.queue
+                        .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                            x: *surface_x as _,
+                            y: *surface_y as _,
+                        }));
                 }
             }
             wl_pointer::Event::Frame { .. } => {
-                // TODO use this
+                self.render().await;
             }
             _ => {
                 eprintln!("unhandled pointer event");
@@ -324,7 +324,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 sc = self.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
                 ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
                     self.widget.react(event).await;
-                    self.render(vec![]).await
+                    self.render().await
                 }
             }
         }

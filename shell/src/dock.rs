@@ -1,10 +1,6 @@
 use crate::{style, util::*};
 use wstk::*;
 
-pub enum LayerShellAction {
-    SetSize(u32),
-}
-
 #[derive(Debug, Clone)]
 pub enum Msg {
     IncrementPressed,
@@ -24,7 +20,6 @@ pub struct Dock {
     value: i32,
     increment_button: iced_native::button::State,
     decrement_button: iced_native::button::State,
-    next_layer_shell_action: Option<LayerShellAction>,
 }
 
 impl DesktopWidget for Dock {
@@ -127,21 +122,13 @@ impl IcedWidget for Dock {
         self.value += 10;
     }
 
-    async fn on_rendered(&mut self, layer_surface: layer_surface::ZwlrLayerSurfaceV1) {
-        if let Some(act) = self.next_layer_shell_action.take() {
-            match act {
-                LayerShellAction::SetSize(sz) => layer_surface.set_size(0, sz),
-            }
-        }
-    }
-
-    async fn on_pointer_enter(&mut self) {
+    async fn on_pointer_enter(&mut self, layer_surface: layer_surface::ZwlrLayerSurfaceV1) {
         self.shown = true;
-        self.next_layer_shell_action = Some(LayerShellAction::SetSize(85));
+        layer_surface.set_size(0, 85);
     }
 
-    async fn on_pointer_leave(&mut self) {
+    async fn on_pointer_leave(&mut self, layer_surface: layer_surface::ZwlrLayerSurfaceV1) {
         self.shown = false;
-        self.next_layer_shell_action = Some(LayerShellAction::SetSize(10));
+        layer_surface.set_size(0, 10);
     }
 }
