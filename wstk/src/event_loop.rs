@@ -8,7 +8,21 @@ use std::sync::Arc;
 pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
     let fd = event_queue.display().get_connection_fd();
     glib::source::unix_fd_add_local(fd, glib::IOCondition::IN, move |_fd, _ioc| {
-        event_queue.dispatch(&mut (), |_, _, _| {}).unwrap();
+        if let Some(guard) = event_queue.prepare_read() {
+            if let Err(e) = event_queue.display().flush() {
+                eprintln!("Error flushing the wayland socket: {:?}", e);
+            }
+
+            if let Err(e) = guard.read_events() {
+                if e.kind() == std::io::ErrorKind::WouldBlock {
+                    eprintln!("Reading from the wayland socket would block!");
+                    return glib::Continue(true);
+                } else {
+                    eprintln!("Error reading from the wayland socket: {:?}", e);
+                }
+            }
+        }
+        event_queue.dispatch_pending(&mut (), |_, _, _| {}).unwrap();
         glib::Continue(true)
     });
 }
