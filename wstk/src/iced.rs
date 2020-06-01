@@ -7,17 +7,17 @@ use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
     get_surface_scale_factor, init_default_environment,
     reexports::{
-        client::protocol::{wl_pointer, wl_surface}, //{wl_display, wl_keyboard, wl_output, wl_shm, },
+        client::protocol::{wl_compositor, wl_pointer, wl_surface}, //{wl_display, wl_keyboard, wl_output, wl_shm, },
         client::{Attached, ConnectError, Display, Proxy},
     },
 };
 
 use iced_graphics::window::Compositor;
+pub use iced_native::Rectangle;
 use iced_native::{mouse, Cache, Damage, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
-use core::marker::Unpin;
-use std::sync::Arc;
+use std::{marker::Unpin, pin::Pin, sync::Arc};
 
 use futures::channel::mpsc;
 pub use futures::prelude::*;
@@ -53,12 +53,14 @@ pub trait IcedWidget {
     type ExternalEvent: std::fmt::Debug + Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
+    fn input_region(&self, width: i32, height: i32) -> Option<Vec<Rectangle<i32>>>;
+
     async fn update(&mut self, message: Self::Message);
     async fn react(&mut self, event: Self::ExternalEvent);
     // TODO: ExternalEvent | IcedEvent | LshEvent
 
-    async fn on_pointer_enter(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
-    async fn on_pointer_leave(&mut self, _ls: layer_surface::ZwlrLayerSurfaceV1) {}
+    async fn on_pointer_enter(&mut self) {}
+    async fn on_pointer_leave(&mut self) {}
 }
 
 pub struct IcedInstance<T> {
@@ -74,6 +76,8 @@ pub struct IcedInstance<T> {
     // wayland state
     ptr_active: bool,
     scale: i32,
+    leave_timeout: Option<future::Fuse<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
+    prev_input_region: Option<Vec<Rectangle<i32>>>,
 
     // iced render state
     cache: Cache,
@@ -141,6 +145,8 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
             scale_rx,
             ptr_active: false,
             scale: 1,
+            leave_timeout: None,
+            prev_input_region: None,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             compositor,
@@ -153,6 +159,25 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
     }
 
     async fn render(&mut self) {
+        let reg = self
+            .widget
+            .input_region(self.size.width as i32, self.size.height as i32);
+        if reg != self.prev_input_region {
+            if let Some(ref rects) = reg {
+                let wlreg = self
+                    .env
+                    .require_global::<wl_compositor::WlCompositor>()
+                    .create_region();
+                for rect in rects.iter() {
+                    wlreg.add(rect.x, rect.y, rect.width, rect.height);
+                }
+                self.wl_surface.set_input_region(Some(&wlreg.detach()));
+            } else {
+                self.wl_surface.set_input_region(None);
+            }
+        }
+        self.prev_input_region = reg;
+
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
         let mut user_interface = UserInterface::build(
@@ -258,20 +283,15 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         match &*event {
             wl_pointer::Event::Enter { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
-                    self.widget
-                        .on_pointer_enter(self.layer_surface.detach())
-                        .await;
                     self.ptr_active = true;
-                    self.wl_surface.commit();
+                    self.leave_timeout = None;
+                    self.widget.on_pointer_enter().await;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
                 if self.wl_surface.detach() == *surface {
-                    self.widget
-                        .on_pointer_leave(self.layer_surface.detach())
-                        .await;
                     self.ptr_active = false;
-                    self.wl_surface.commit();
+                    self.leave_timeout = Some(glib::timeout_future(420).fuse());
                 }
             }
             wl_pointer::Event::Button { button, state, .. } => {
@@ -318,6 +338,12 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         let mut layer_events = wayland_event_chan(&self.layer_surface);
 
         loop {
+            let leave_timeout_existed = self.leave_timeout.is_some();
+            let mut leave_timeout = self
+                .leave_timeout
+                .take()
+                .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
+            // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
             futures::select! {
                 ev = layer_events.next() => if let Some(event) = ev { self.on_layer_event(event).await },
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
@@ -325,7 +351,15 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
                     self.widget.react(event).await;
                     self.render().await
-                }
+                },
+                () = leave_timeout => {
+                    self.widget.on_pointer_leave().await;
+                    // not getting a pointer frame after the timeout ;)
+                    self.render().await;
+                },
+            }
+            if leave_timeout_existed && !self.ptr_active {
+                self.leave_timeout = Some(leave_timeout);
             }
         }
     }

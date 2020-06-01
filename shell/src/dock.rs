@@ -29,7 +29,7 @@ impl DesktopWidget for Dock {
                 | layer_surface::Anchor::Right
                 | layer_surface::Anchor::Bottom,
         );
-        layer_surface.set_size(0, 10);
+        layer_surface.set_size(0, 85);
         layer_surface.set_exclusive_zone(10);
     }
 }
@@ -90,6 +90,9 @@ impl IcedWidget for Dock {
             .center_x();
 
             col = col.push(dock);
+        } else {
+            col = col
+                .push(Container::new(Text::new("".to_string()).size(0)).height(Length::Units(75)));
         }
 
         let bar = Container::new(
@@ -107,6 +110,29 @@ impl IcedWidget for Dock {
         col.push(bar).into()
     }
 
+    fn input_region(&self, width: i32, _height: i32) -> Option<Vec<Rectangle<i32>>> {
+        let bar = Rectangle {
+            x: 0,
+            y: 75,
+            width,
+            height: 10,
+        };
+        if self.shown {
+            let dock_width = 420; // TODO actually calculate based on icons
+            Some(vec![
+                Rectangle {
+                    x: (width - dock_width) / 2,
+                    y: 0,
+                    width: dock_width,
+                    height: 85,
+                },
+                bar,
+            ])
+        } else {
+            Some(vec![bar])
+        }
+    }
+
     async fn update(&mut self, message: Self::Message) {
         match message {
             Msg::IncrementPressed => {
@@ -122,13 +148,11 @@ impl IcedWidget for Dock {
         self.value += 10;
     }
 
-    async fn on_pointer_enter(&mut self, layer_surface: layer_surface::ZwlrLayerSurfaceV1) {
+    async fn on_pointer_enter(&mut self) {
         self.shown = true;
-        layer_surface.set_size(0, 85);
     }
 
-    async fn on_pointer_leave(&mut self, layer_surface: layer_surface::ZwlrLayerSurfaceV1) {
+    async fn on_pointer_leave(&mut self) {
         self.shown = false;
-        layer_surface.set_size(0, 10);
     }
 }
