@@ -15,21 +15,21 @@ pub use iced_native;
 
 #[macro_export]
 macro_rules! wstk_main {
-    ( async fn main ( $env:ident : Environment<Env>, $disp:ident : WlDisplay, $queue:ident : &EventQueue ) { $($body:tt)* } ) => {
+    ( $fun:ident ) => {
         static mut LOL: Option<EventQueue> = None;
 
         fn main() -> Result<(), Box<dyn std::error::Error>> {
-            let ($env, $disp, queue) = make_env()?;
+            let (env, disp, queue) = make_env()?;
             let main = glib::MainLoop::new(None, false);
             glib::MainContext::default().acquire();
-            let $queue = unsafe {
+            let queue = unsafe {
                 LOL = Some(queue);
                 glib_add_wayland(LOL.as_mut().unwrap());
                 LOL.as_ref().unwrap()
             };
-            glib::MainContext::default().spawn_local(async move { $($body)* });
+            glib::MainContext::default().spawn_local($fun(env, disp, queue));
             main.run();
             Ok(())
         }
-    }
+    };
 }

@@ -5,8 +5,7 @@ mod dock;
 mod style;
 mod util;
 
-wstk_main! {
-async fn main(env: Environment<Env>, display: WlDisplay, queue: &EventQueue) {
+async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     // TODO: multi-monitor handling
     // let output_handler = move |output: wl_output::WlOutput, info: &OutputInfo| {
     //     eprintln!("Output {:?}", info);
@@ -20,7 +19,8 @@ async fn main(env: Environment<Env>, display: WlDisplay, queue: &EventQueue) {
     //     }
     // }
 
-    let mut test = IcedInstance::new(dock::Dock::default(), env.clone(), display.clone(), queue).await;
+    let mut test =
+        IcedInstance::new(dock::Dock::default(), env.clone(), display.clone(), queue).await;
     // let mut test2 = IcedInstance::new(Test::default(), env.clone(), display.clone(), queue).await;
     let mut pend = glib::unix_signal_stream(30).map(|()| dock::Evt::Sig);
     futures::join!(
@@ -28,4 +28,5 @@ async fn main(env: Environment<Env>, display: WlDisplay, queue: &EventQueue) {
         // test2.run(),
     );
 }
-}
+
+wstk_main!(main_);

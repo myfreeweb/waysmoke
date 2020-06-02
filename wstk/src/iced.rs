@@ -1,14 +1,16 @@
-pub use smithay_client_toolkit::reexports::client::{EventQueue, Main};
-pub use smithay_client_toolkit::reexports::protocols::wlr::unstable::layer_shell::v1::client::{
-    zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
-};
 use smithay_client_toolkit::{
-    default_environment,
+    default_environment, get_surface_scale_factor, init_default_environment,
+};
+pub use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
-    get_surface_scale_factor, init_default_environment,
     reexports::{
-        client::protocol::{wl_compositor, wl_pointer, wl_surface}, //{wl_display, wl_keyboard, wl_output, wl_shm, },
-        client::{Attached, ConnectError, Display, Proxy},
+        client::{
+            protocol::{wl_compositor, wl_pointer, wl_surface},
+            Attached, ConnectError, Display, EventQueue, Main, Proxy,
+        },
+        protocols::wlr::unstable::layer_shell::v1::client::{
+            zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
+        },
     },
 };
 
