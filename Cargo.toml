@@ -23,5 +23,9 @@ wayland-protocols = { path = "../../Smithay/wayland-rs/wayland-protocols/" }
 wgpu-core  = { path = "../../gfx-rs/wgpu/wgpu-core/" }
 wgpu-types = { path = "../../gfx-rs/wgpu/wgpu-types/" }
 
-# patch: bsd
+# patch: bsd (merged)
 usvg = { path = "../../RazrFalcon/resvg/usvg/" }
+
+# patch: dbus
+gio = { path = "../../gtk-rs/gio/" }
+glib = { git = "https://github.com/gtk-rs/glib" } # version required by gio

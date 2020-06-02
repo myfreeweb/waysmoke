@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 futures = "0.3"
 glib = "0.9"
-gio = "0.8"
+gio = { version = "0.8", features = ["v2_46"] }
 linicon = "0.4"
 
 wstk = { path = "../wstk" }
