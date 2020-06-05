@@ -4,10 +4,14 @@ version = "0.0.0"
 authors = ["Greg V <greg@unrelenting.technology>"]
 edition = "2018"
 
+# [build-dependencies]
+# wayland-scanner = "0.26"
+
 [dependencies]
 # byteorder = "1"
 # typemap = "0.3"
 raw-window-handle = "0.3"
+# wayland-commons = "0.26"
 wayland-client = { version = "0.26", features = ["use_system_lib"] }
 smithay-client-toolkit = { version = "0.9", default-features = false }
 

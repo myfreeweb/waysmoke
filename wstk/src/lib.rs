@@ -4,6 +4,10 @@
 pub mod event_loop;
 pub use event_loop::*;
 
+#[macro_use]
+pub mod toplevels;
+pub use toplevels::*;
+
 pub mod iced;
 pub use iced::*;
 
@@ -19,9 +23,9 @@ macro_rules! wstk_main {
         static mut LOL: Option<EventQueue> = None;
 
         fn main() -> Result<(), Box<dyn std::error::Error>> {
-            let (env, disp, queue) = make_env()?;
             let main = glib::MainLoop::new(None, false);
             glib::MainContext::default().acquire();
+            let (env, disp, queue) = make_env()?;
             let queue = unsafe {
                 LOL = Some(queue);
                 glib_add_wayland(LOL.as_mut().unwrap());

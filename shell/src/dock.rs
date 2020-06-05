@@ -1,25 +1,108 @@
 use crate::{style, util::*};
 use wstk::*;
 
+lazy_static::lazy_static! {
+    static ref UNKNOWN_ICON: icons::IconHandle =
+        icons::IconHandle::from_path(apps::unknown_icon());
+}
+
 #[derive(Debug, Clone)]
 pub enum Msg {
-    IncrementPressed,
-    DecrementPressed,
+    ActivateApp(usize),
 }
 
-#[derive(Debug, Clone)]
-pub enum Evt {
-    Sig,
+// #[derive(Debug, Clone)]
+// pub enum Evt {
+// }
+
+struct DockApp {
+    app: apps::App,
+    icon: icons::IconHandle,
+    button: iced_native::button::State,
 }
 
-#[derive(Default)]
+impl DockApp {
+    pub fn new(app: apps::App) -> DockApp {
+        let icon = app
+            .icon()
+            .map(icons::IconHandle::from_path)
+            .unwrap_or_else(|| UNKNOWN_ICON.clone());
+        DockApp {
+            app,
+            icon,
+            button: Default::default(),
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<DockApp> {
+        apps::App::lookup(id).map(DockApp::new)
+    }
+
+    pub fn id(&self) -> &str {
+        &self.app.id
+    }
+
+    pub fn widget(&mut self, position: usize) -> Element<Msg> {
+        use iced_native::*;
+
+        Container::new(
+            Button::new(&mut self.button, self.icon.clone().widget())
+                .style(style::Dock)
+                .on_press(Msg::ActivateApp(position)),
+        )
+        .style(style::Dock)
+        .center_x()
+        .center_y()
+        .into()
+    }
+}
+
 pub struct Dock {
     shown: bool,
-    ic1: Option<icons::IconHandle>,
-    ic2: Option<icons::IconHandle>,
-    value: i32,
-    increment_button: iced_native::button::State,
-    decrement_button: iced_native::button::State,
+    seat: wl_seat::WlSeat,
+    toplevels: ToplevelStates,
+    apps: Vec<DockApp>,
+}
+
+impl Dock {
+    pub fn new(seat: wl_seat::WlSeat, toplevels: ToplevelStates) -> Dock {
+        Dock {
+            shown: false,
+            seat,
+            toplevels,
+            apps: Vec::new(),
+        }
+    }
+
+    fn update_apps(&mut self) {
+        let docked = vec!["Nightly", "Alacritty", "org.gnome.Lollypop"]; // TODO: GSettings
+
+        for id in docked.iter() {
+            if self.apps.iter().find(|a| a.id() == *id).is_none() {
+                if let Some(app) = DockApp::from_id(id) {
+                    self.apps.push(app);
+                }
+            }
+        }
+
+        let toplevels = self.toplevels.borrow();
+        for topl in toplevels.values() {
+            if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
+                if let Some(app) = DockApp::from_id(&topl.app_id).or_else(|| {
+                    topl.gtk_app_id
+                        .as_ref()
+                        .and_then(|gid| DockApp::from_id(&gid))
+                }) {
+                    self.apps.push(app);
+                }
+            }
+        }
+
+        self.apps.retain(|a| {
+            docked.iter().any(|id| a.id() == *id)
+                || toplevels.values().any(|topl| topl.matches_id(a.id()))
+        });
+    }
 }
 
 impl DesktopWidget for Dock {
@@ -34,10 +117,10 @@ impl DesktopWidget for Dock {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl IcedWidget for Dock {
     type Message = Msg;
-    type ExternalEvent = Evt;
+    type ExternalEvent = ();
 
     fn view(&mut self) -> Element<Self::Message> {
         use iced_native::*;
@@ -45,36 +128,11 @@ impl IcedWidget for Dock {
         let mut col = Column::new().width(Length::Fill);
 
         if self.shown {
-            if self.ic1.is_none() {
-                self.ic1 = Some(icons::IconHandle::from_path(
-                    apps::App::lookup("org.gnome.Weather", None).icon(),
-                ));
-            }
-            if self.ic2.is_none() {
-                self.ic2 = Some(icons::IconHandle::from_path(
-                    apps::App::lookup("gtk3-demo", None).icon(),
-                ));
-            }
-            let row = Row::new()
-                .align_items(Align::Center)
-                .spacing(20)
-                .push(
-                    Button::new(
-                        &mut self.increment_button,
-                        self.ic1.as_ref().unwrap().clone().widget(),
-                    )
-                    .style(style::Dock)
-                    .on_press(Msg::IncrementPressed),
-                )
-                .push(Text::new(self.value.to_string()).size(20))
-                .push(
-                    Button::new(
-                        &mut self.decrement_button,
-                        self.ic2.as_ref().unwrap().clone().widget(),
-                    )
-                    .style(style::Dock)
-                    .on_press(Msg::DecrementPressed),
-                );
+            let row = self.apps.iter_mut().enumerate().fold(
+                Row::new().align_items(Align::Center).spacing(4),
+                |row, (i, app)| row.push(app.widget(i)),
+            );
+            // TODO: show toplevels for unrecognized apps
 
             let dock = Container::new(
                 Container::new(row)
@@ -134,18 +192,27 @@ impl IcedWidget for Dock {
     }
 
     async fn update(&mut self, message: Self::Message) {
+        use gio::AppInfoExt;
         match message {
-            Msg::IncrementPressed => {
-                self.value += 1;
-            }
-            Msg::DecrementPressed => {
-                self.value -= 1;
+            Msg::ActivateApp(id) => {
+                let toplevels = self.toplevels.borrow();
+                for topl in toplevels.values() {
+                    if topl.matches_id(self.apps[id].id()) {
+                        topl.handle.activate(&self.seat);
+                        return;
+                    }
+                }
+                self.apps[id]
+                    .app
+                    .info
+                    .launch::<gio::AppLaunchContext>(&[], None)
+                    .unwrap()
             }
         }
     }
 
     async fn react(&mut self, _event: Self::ExternalEvent) {
-        self.value += 10;
+        self.update_apps();
     }
 
     async fn on_pointer_enter(&mut self) {

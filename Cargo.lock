@@ -2301,6 +2301,7 @@ dependencies = [
  "futures",
  "gio",
  "glib",
+ "lazy_static",
  "linicon",
  "wstk",
 ]

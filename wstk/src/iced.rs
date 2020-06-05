@@ -5,8 +5,12 @@ pub use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
     reexports::{
         client::{
-            protocol::{wl_compositor, wl_pointer, wl_surface},
-            Attached, ConnectError, Display, EventQueue, Main, Proxy,
+            protocol::{wl_compositor, wl_pointer, wl_seat, wl_surface},
+            Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
+        },
+        protocols::wlr::unstable::foreign_toplevel::v1::client::{
+            zwlr_foreign_toplevel_handle_v1 as toplevel_handle,
+            zwlr_foreign_toplevel_manager_v1 as toplevel_manager,
         },
         protocols::wlr::unstable::layer_shell::v1::client::{
             zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
@@ -26,19 +30,28 @@ pub use futures::prelude::*;
 
 pub use async_trait::async_trait;
 
-use crate::{event_loop::*, handle::*};
+use crate::{event_loop::*, handle::*, toplevels::*};
 
 default_environment!(Env,
     fields = [
         layer_shell: SimpleGlobal<layer_shell::ZwlrLayerShellV1>,
+        toplevel_manager: ToplevelHandler,
     ],
     singles = [
-        layer_shell::ZwlrLayerShellV1 => layer_shell
+        layer_shell::ZwlrLayerShellV1 => layer_shell,
+        toplevel_manager::ZwlrForeignToplevelManagerV1 => toplevel_manager,
     ],
 );
+toplevel_handler!(Env, toplevel_manager);
 
 pub fn make_env() -> Result<(Environment<Env>, Display, EventQueue), ConnectError> {
-    init_default_environment!(Env, fields = [layer_shell: SimpleGlobal::new(),])
+    init_default_environment!(
+        Env,
+        fields = [
+            layer_shell: SimpleGlobal::new(),
+            toplevel_manager: ToplevelHandler::new(),
+        ]
+    )
 }
 
 static mut SCALE_CHANNELS: Vec<(wl_surface::WlSurface, mpsc::UnboundedSender<i32>)> = Vec::new();
@@ -49,7 +62,7 @@ pub trait DesktopWidget {
 
 pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Renderer>;
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait IcedWidget {
     type Message: std::fmt::Debug + Send;
     type ExternalEvent: std::fmt::Debug + Send;
@@ -70,7 +83,7 @@ pub struct IcedInstance<T> {
 
     // wayland handles
     env: Environment<Env>,
-    // display: Display,
+    display: Display,
     wl_surface: Attached<wl_surface::WlSurface>,
     layer_surface: Main<layer_surface::ZwlrLayerSurfaceV1>,
     scale_rx: mpsc::UnboundedReceiver<i32>,
@@ -92,7 +105,7 @@ pub struct IcedInstance<T> {
     queue: Vec<iced_native::Event>,
 }
 
-impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
+impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
     pub async fn new(
         widget: T,
         env: Environment<Env>,
@@ -141,7 +154,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
         IcedInstance {
             widget,
             env,
-            // display,
+            display,
             wl_surface,
             layer_surface,
             scale_rx,
@@ -220,6 +233,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
             for message in messages {
                 self.widget.update(message).await;
             }
+            self.display.flush().unwrap();
 
             let user_interface = UserInterface::build(
                 self.widget.view(),
@@ -352,6 +366,7 @@ impl<T: DesktopWidget + IcedWidget + Send> IcedInstance<T> {
                 sc = self.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
                 ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
                     self.widget.react(event).await;
+                    self.display.flush().unwrap();
                     self.render().await
                 },
                 () = leave_timeout => {

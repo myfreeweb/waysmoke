@@ -17,6 +17,7 @@ wayland-cursor    = { path = "../../Smithay/wayland-rs/wayland-cursor/" }
 wayland-sys       = { path = "../../Smithay/wayland-rs/wayland-sys/" }
 wayland-scanner   = { path = "../../Smithay/wayland-rs/wayland-scanner/" }
 wayland-protocols = { path = "../../Smithay/wayland-rs/wayland-protocols/" }
+wayland-commons   = { path = "../../Smithay/wayland-rs/wayland-commons/" }
 
 # note: v0.5 branch
 # patch: transparency, damage
