@@ -1,10 +1,9 @@
-use crate::event_loop::wayland_event_chan;
 use futures::{channel::mpsc, prelude::*};
 use smithay_client_toolkit::{
     environment::GlobalHandler,
     reexports::client::{
         protocol::{wl_output, wl_registry},
-        Attached, DispatchData, Interface, MessageGroup, Proxy, ProxyMap,
+        Attached, DispatchData, Proxy,
     },
 };
 
@@ -18,7 +17,6 @@ use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
     rc::Rc,
-    sync::Arc,
 };
 
 #[derive(PartialEq, Eq)]

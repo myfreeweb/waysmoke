@@ -1,5 +1,7 @@
 use wstk::*;
 
+pub const ICON_SIZE: u16 = 64;
+
 #[derive(Clone)]
 pub enum IconHandle {
     Vector(iced_native::svg::Handle),
@@ -20,12 +22,12 @@ impl IconHandle {
         use iced_native::{Image, Length, Svg};
         match self {
             IconHandle::Raster(h) => Image::new(h)
-                .width(Length::Units(64))
-                .height(Length::Units(64))
+                .width(Length::Units(ICON_SIZE))
+                .height(Length::Units(ICON_SIZE))
                 .into(),
             IconHandle::Vector(h) => Svg::new(h)
-                .width(Length::Units(64))
-                .height(Length::Units(64))
+                .width(Length::Units(ICON_SIZE))
+                .height(Length::Units(ICON_SIZE))
                 .into(),
         }
     }

@@ -6,6 +6,13 @@ lazy_static::lazy_static! {
         icons::IconHandle::from_path(apps::unknown_icon());
 }
 
+pub const APP_PADDING: u16 = 4;
+pub const DOCK_PADDING: u16 = 4;
+pub const DOCK_GAP: u16 = 6;
+pub const BAR_HEIGHT: u16 = 10;
+pub const DOCK_AND_GAP_HEIGHT: u16 =
+    icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2 + DOCK_GAP;
+
 #[derive(Debug, Clone)]
 pub enum Msg {
     ActivateApp(usize),
@@ -22,7 +29,7 @@ struct DockApp {
 }
 
 impl DockApp {
-    pub fn new(app: apps::App) -> DockApp {
+    fn new(app: apps::App) -> DockApp {
         let icon = app
             .icon()
             .map(icons::IconHandle::from_path)
@@ -34,26 +41,32 @@ impl DockApp {
         }
     }
 
-    pub fn from_id(id: &str) -> Option<DockApp> {
+    fn from_id(id: &str) -> Option<DockApp> {
         apps::App::lookup(id).map(DockApp::new)
     }
 
-    pub fn id(&self) -> &str {
+    fn id(&self) -> &str {
         &self.app.id
     }
 
-    pub fn widget(&mut self, position: usize) -> Element<Msg> {
+    fn widget(&mut self, position: usize) -> Element<Msg> {
         use iced_native::*;
 
-        Container::new(
-            Button::new(&mut self.button, self.icon.clone().widget())
-                .style(style::Dock)
-                .on_press(Msg::ActivateApp(position)),
-        )
-        .style(style::Dock)
-        .center_x()
-        .center_y()
-        .into()
+        let big_button = Button::new(&mut self.button, self.icon.clone().widget())
+            .style(style::Dock)
+            .padding(APP_PADDING)
+            .on_press(Msg::ActivateApp(position));
+
+        Container::new(big_button)
+            .style(style::Dock)
+            .center_x()
+            .center_y()
+            .into()
+    }
+
+    fn width(&self) -> u16 {
+        // TODO: will be dynamic based on extras
+        icons::ICON_SIZE + APP_PADDING * 2
     }
 }
 
@@ -112,8 +125,8 @@ impl DesktopWidget for Dock {
                 | layer_surface::Anchor::Right
                 | layer_surface::Anchor::Bottom,
         );
-        layer_surface.set_size(0, 85);
-        layer_surface.set_exclusive_zone(10);
+        layer_surface.set_size(0, (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _);
+        layer_surface.set_exclusive_zone(BAR_HEIGHT as _);
     }
 }
 
@@ -129,7 +142,7 @@ impl IcedWidget for Dock {
 
         if self.shown {
             let row = self.apps.iter_mut().enumerate().fold(
-                Row::new().align_items(Align::Center).spacing(4),
+                Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
                 |row, (i, app)| row.push(app.widget(i)),
             );
             // TODO: show toplevels for unrecognized apps
@@ -138,19 +151,23 @@ impl IcedWidget for Dock {
                 Container::new(row)
                     .style(style::Dock)
                     .width(Length::Shrink)
-                    .height(Length::Units(69))
+                    .height(Length::Shrink)
                     .center_x()
                     .center_y()
-                    .padding(4),
+                    .padding(DOCK_PADDING),
             )
             .width(Length::Fill)
-            .height(Length::Units(75))
+            .height(Length::Shrink)
             .center_x();
 
-            col = col.push(dock);
+            col = col.push(dock).push(
+                Container::new(Text::new("".to_string()).size(0)).height(Length::Units(DOCK_GAP)),
+            );
         } else {
-            col = col
-                .push(Container::new(Text::new("".to_string()).size(0)).height(Length::Units(75)));
+            col = col.push(
+                Container::new(Text::new("".to_string()).size(0))
+                    .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
+            );
         }
 
         let bar = Container::new(
@@ -161,7 +178,7 @@ impl IcedWidget for Dock {
         )
         .style(style::DarkBar)
         .width(Length::Fill)
-        .height(Length::Units(10))
+        .height(Length::Units(BAR_HEIGHT))
         .center_x()
         .center_y();
 
@@ -171,18 +188,20 @@ impl IcedWidget for Dock {
     fn input_region(&self, width: i32, _height: i32) -> Option<Vec<Rectangle<i32>>> {
         let bar = Rectangle {
             x: 0,
-            y: 75,
+            y: DOCK_AND_GAP_HEIGHT as _,
             width,
-            height: 10,
+            height: BAR_HEIGHT as _,
         };
         if self.shown {
-            let dock_width = 420; // TODO actually calculate based on icons
+            let dock_width = (self.apps.iter().fold(0, |w, app| w + app.width())
+                + DOCK_PADDING * (std::cmp::max(self.apps.len() as u16, 1) - 1)
+                + DOCK_PADDING * 2) as _;
             Some(vec![
                 Rectangle {
                     x: (width - dock_width) / 2,
                     y: 0,
                     width: dock_width,
-                    height: 85,
+                    height: (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _,
                 },
                 bar,
             ])

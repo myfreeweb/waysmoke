@@ -1,3 +1,4 @@
+use crate::util::icons;
 use std::path::Path;
 
 lazy_static::lazy_static! {
@@ -51,7 +52,8 @@ impl App {
             .unwrap()
             .get_names();
         let name = names.iter().next()?;
-        linicon::lookup_icon_with_extra_paths("Adwaita", name, 64, 1, &PATHS[..])
+        // TODO: support scales properly
+        linicon::lookup_icon_with_extra_paths("Adwaita", name, icons::ICON_SIZE * 2, 1, &PATHS[..])
             .unwrap()
             .flat_map(|x| x)
             .next()
@@ -76,7 +78,7 @@ fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPa
 }
 
 pub fn unknown_icon() -> linicon::IconPath {
-    linicon::lookup_icon_with_extra_paths("Adwaita", "application-x-executable", 64, 1, &PATHS[..])
+    linicon::lookup_icon_with_extra_paths("Adwaita", "application-x-executable", 128, 1, &PATHS[..])
         .unwrap()
         .flat_map(|x| x)
         .next()
