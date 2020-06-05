@@ -11,22 +11,19 @@ panic = "abort"
 
 [patch.crates-io]
 
-# patch: pkg-config (merged)
-wayland-client    = { path = "../../Smithay/wayland-rs/wayland-client/" }
-wayland-cursor    = { path = "../../Smithay/wayland-rs/wayland-cursor/" }
-wayland-sys       = { path = "../../Smithay/wayland-rs/wayland-sys/" }
-wayland-scanner   = { path = "../../Smithay/wayland-rs/wayland-scanner/" }
-wayland-protocols = { path = "../../Smithay/wayland-rs/wayland-protocols/" }
-wayland-commons   = { path = "../../Smithay/wayland-rs/wayland-commons/" }
+# patch: pkg-config
+wayland-client    = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-cursor    = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-sys       = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-scanner   = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
 
 # note: v0.5 branch
-# patch: transparency, damage
+# patch: transparency
 wgpu-core  = { path = "../../gfx-rs/wgpu/wgpu-core/" }
 wgpu-types = { path = "../../gfx-rs/wgpu/wgpu-types/" }
 
-# patch: bsd (merged)
-usvg = { path = "../../RazrFalcon/resvg/usvg/" }
-
 # patch: dbus
-gio = { path = "../../gtk-rs/gio/" }
+gio  = { git = "https://github.com/gtk-rs/gio" }
 glib = { git = "https://github.com/gtk-rs/glib" } # version required by gio

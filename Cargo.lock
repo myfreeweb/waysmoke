@@ -69,9 +69,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.32"
+version = "0.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0eb7f9ad01405feb3c1dac82463038945cf88eea4569acaf3ad662233496dd96"
+checksum = "8f1c13101a3224fb178860ae372a031ce350bbd92d39968518f016744dde0bf7"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -95,6 +95,12 @@ name = "base64"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
+
+[[package]]
+name = "base64"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53d1ccbaf7d9ec9537465a97bf19edc1a4e158ecb49fc16178202238c569cc42"
 
 [[package]]
 name = "bitflags"
@@ -181,12 +187,6 @@ dependencies = [
  "libc",
  "objc",
 ]
-
-[[package]]
-name = "color_quant"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0dbbb57365263e881e805dc77d94697c9118fd94d8da011240555aa7b23445bd"
 
 [[package]]
 name = "constant_time_eq"
@@ -398,11 +398,10 @@ dependencies = [
 
 [[package]]
 name = "dirs-sys"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afa0b23de8fd801745c471deffa6e12d248f962c9fd4b4c33787b055599bde7b"
+checksum = "8e93d7f5705de3e49895a2b5e0b8855a1c27f080192ae9c32a6432d50741a57a"
 dependencies = [
- "cfg-if",
  "libc",
  "redox_users",
  "winapi",
@@ -801,18 +800,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "gif"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "471d90201b3b223f3451cd4ad53e34295f16a1df17b1edf3736d47761c3981af"
-dependencies = [
- "color_quant",
- "lzw",
-]
-
-[[package]]
 name = "gio"
 version = "0.8.1"
+source = "git+https://github.com/gtk-rs/gio#47e70e414e3d00e73714678d2d032b7a01e4c87a"
 dependencies = [
  "bitflags",
  "futures",
@@ -939,9 +929,9 @@ dependencies = [
 
 [[package]]
 name = "guillotiere"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "380a4da3f1cfb2e9873d650f1f969fa646aee7268056119ad5d096b3821152b5"
+checksum = "47065d052e2f000066c4ffbea7051e55bff5c1532c400fc1e269492b2474ccc1"
 dependencies = [
  "euclid",
  "svg_fmt",
@@ -1068,14 +1058,10 @@ checksum = "9117f4167a8f21fa2bb3f17a652a760acd7572645281c98e3b612a26242c96ee"
 dependencies = [
  "bytemuck",
  "byteorder",
- "gif",
- "jpeg-decoder",
  "num-iter",
  "num-rational",
  "num-traits",
  "png 0.16.4",
- "scoped_threadpool",
- "tiff",
 ]
 
 [[package]]
@@ -1103,7 +1089,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b47b4c4e017b01abdc5bcc126d2d1002e5a75bbe3ce73f9f4f311a916363704"
 dependencies = [
  "byteorder",
- "rayon",
 ]
 
 [[package]]
@@ -1117,9 +1102,9 @@ dependencies = [
 
 [[package]]
 name = "kurbo"
-version = "0.5.11"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf50e17a1697110c694d47c5b1a6b64faf5eb3ffe5a286df23fb8cd516e33be6"
+checksum = "2520c9c9010461ec2b4573599bca458272319a314fd0b9476cacfcb9b6e5adc8"
 dependencies = [
  "arrayvec 0.5.1",
 ]
@@ -1213,12 +1198,6 @@ dependencies = [
  "euclid",
  "num-traits",
 ]
-
-[[package]]
-name = "lzw"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d947cbb889ed21c2a84be6ffbaebf5b4e0f4340638cba0444907e38b56be084"
 
 [[package]]
 name = "malloc_buf"
@@ -1420,7 +1399,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f923fb806c46266c02ab4a5b239735c144bdeda724a50ed058e5226f594cde3"
 dependencies = [
- "ttf-parser 0.6.1",
+ "ttf-parser",
 ]
 
 [[package]]
@@ -1490,18 +1469,18 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "0.4.17"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edc93aeee735e60ecb40cf740eb319ff23eab1c5748abfdb5c180e4ce49f7791"
+checksum = "ba3a1acf4a3e70849f8a673497ef984f043f95d2d8252dcdf74d54e6a1e47e8a"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "0.4.17"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e58db2081ba5b4c93bd6be09c40fd36cb9193a8336c384f3b40012e531aa7e40"
+checksum = "194e88048b71a3e02eb4ee36a6995fed9b8236c11a7bb9f7247a9d9835b3f265"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1664,9 +1643,9 @@ checksum = "a871f1e45a3a3f0c73fb60343c811238bb5143a81642e27c2ac7aac27ff01a63"
 
 [[package]]
 name = "raqote"
-version = "0.7.14"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e8400fa875bc4d584d9145cef72074df4d51d106dcc52678d4bf4214ba52eae"
+checksum = "501c19caa439857ed7bea975fa4c3c10ee9a24e33c2640030c3ac14b58f39f77"
 dependencies = [
  "euclid",
  "lyon_geom",
@@ -1733,9 +1712,9 @@ dependencies = [
 
 [[package]]
 name = "resvg"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52d7032d9d22798fd2f832e893247c0e33040c01742a02812101bd94f7591629"
+checksum = "9eb725b12f9ddec184b31cdbd921aede9b89e5ade37f9fd7e1685429921dc5ac"
 dependencies = [
  "jpeg-decoder",
  "log",
@@ -1754,9 +1733,9 @@ checksum = "6714061b32e0b0527005d5874c28a57d905559fecfacd361462ad0b01e701996"
 
 [[package]]
 name = "roxmltree"
-version = "0.9.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99d696b20b92d3e02e08fd8456f0ab03007c99e6b111a6205b9cb6fc044d0957"
+checksum = "d5001f134077069d87f77c8b9452b690df2445f7a43f1c7ca4a1af8dd505789d"
 dependencies = [
  "xmlparser",
 ]
@@ -1767,7 +1746,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bc8af4bda8e1ff4932523b94d3dd20ee30a87232323eda55903ffd71d2fb017"
 dependencies = [
- "base64",
+ "base64 0.11.0",
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils",
@@ -1808,12 +1787,6 @@ name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
-
-[[package]]
-name = "scoped_threadpool"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
 
 [[package]]
 name = "scopeguard"
@@ -2031,17 +2004,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiff"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "002351e428db1eb1d8656d4ca61947c3519ac3191e1c804d4600cd32093b77ad"
-dependencies = [
- "byteorder",
- "lzw",
- "miniz_oxide",
-]
-
-[[package]]
 name = "toml"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2049,12 +2011,6 @@ checksum = "ffc92d160b1eef40665be3a05630d003936a3bc7da7421277846c2613e92c71a"
 dependencies = [
  "serde",
 ]
-
-[[package]]
-name = "ttf-parser"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a67a691cd15aae8f55fcc6e68efec96ec9e6e3ad967ac16f18681e2268c92037"
 
 [[package]]
 name = "ttf-parser"
@@ -2112,9 +2068,11 @@ checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
 
 [[package]]
 name = "usvg"
-version = "0.9.0"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d98fe4bbd8cfe811fb84dabebd670d26b1e633ecb4d3a4ef3a4b8c10252448d"
 dependencies = [
- "base64",
+ "base64 0.12.1",
  "data-url",
  "flate2",
  "harfbuzz_rs",
@@ -2126,7 +2084,7 @@ dependencies = [
  "simplecss",
  "siphasher",
  "svgtypes",
- "ttf-parser 0.3.0",
+ "ttf-parser",
  "unicode-bidi",
  "unicode-script",
  "unicode-vo",
@@ -2237,6 +2195,7 @@ checksum = "c9ba19973a58daf4db6f352eda73dc0e289493cd29fb2632eb172085b6521acd"
 [[package]]
 name = "wayland-client"
 version = "0.26.6"
+source = "git+https://github.com/Smithay/wayland-rs#496c02be5fc418636dbaf9da573aec6ec4d15d56"
 dependencies = [
  "bitflags",
  "downcast-rs",
@@ -2251,6 +2210,7 @@ dependencies = [
 [[package]]
 name = "wayland-commons"
 version = "0.26.6"
+source = "git+https://github.com/Smithay/wayland-rs#496c02be5fc418636dbaf9da573aec6ec4d15d56"
 dependencies = [
  "nix",
  "once_cell",
@@ -2261,6 +2221,7 @@ dependencies = [
 [[package]]
 name = "wayland-cursor"
 version = "0.26.6"
+source = "git+https://github.com/Smithay/wayland-rs#496c02be5fc418636dbaf9da573aec6ec4d15d56"
 dependencies = [
  "nix",
  "wayland-client",
@@ -2270,6 +2231,7 @@ dependencies = [
 [[package]]
 name = "wayland-protocols"
 version = "0.26.6"
+source = "git+https://github.com/Smithay/wayland-rs#496c02be5fc418636dbaf9da573aec6ec4d15d56"
 dependencies = [
  "bitflags",
  "wayland-client",
@@ -2280,6 +2242,7 @@ dependencies = [
 [[package]]
 name = "wayland-scanner"
 version = "0.26.6"
+source = "git+https://github.com/Smithay/wayland-rs#496c02be5fc418636dbaf9da573aec6ec4d15d56"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2289,6 +2252,7 @@ dependencies = [
 [[package]]
 name = "wayland-sys"
 version = "0.26.6"
+source = "git+https://github.com/Smithay/wayland-rs#496c02be5fc418636dbaf9da573aec6ec4d15d56"
 dependencies = [
  "dlib",
  "pkg-config",
