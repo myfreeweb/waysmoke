@@ -16,6 +16,8 @@ pub const DOCK_AND_GAP_HEIGHT: u16 =
 #[derive(Debug, Clone)]
 pub enum Msg {
     ActivateApp(usize),
+    HoverApp(usize),
+    UnhoverApp(usize),
 }
 
 // #[derive(Debug, Clone)]
@@ -26,6 +28,7 @@ struct DockApp {
     app: apps::App,
     icon: icons::IconHandle,
     button: iced_native::button::State,
+    evl: addeventlistener::State,
 }
 
 impl DockApp {
@@ -38,6 +41,7 @@ impl DockApp {
             app,
             icon,
             button: Default::default(),
+            evl: Default::default(),
         }
     }
 
@@ -57,7 +61,11 @@ impl DockApp {
             .padding(APP_PADDING)
             .on_press(Msg::ActivateApp(position));
 
-        Container::new(big_button)
+        let listener = AddEventListener::new(&mut self.evl, big_button)
+            .on_pointer_enter(Msg::HoverApp(position))
+            .on_pointer_leave(Msg::UnhoverApp(position));
+
+        Container::new(listener)
             .style(style::Dock)
             .center_x()
             .center_y()
@@ -227,6 +235,8 @@ impl IcedWidget for Dock {
                     .launch::<gio::AppLaunchContext>(&[], None)
                     .unwrap()
             }
+            Msg::HoverApp(id) => eprintln!("TODO handle: hover {}", id),
+            Msg::UnhoverApp(id) => eprintln!("TODO handle: unhover {}", id),
         }
     }
 

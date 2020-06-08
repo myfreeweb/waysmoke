@@ -11,6 +11,9 @@ pub use toplevels::*;
 pub mod iced;
 pub use iced::*;
 
+pub mod widgets;
+pub use widgets::*;
+
 pub mod handle;
 
 pub use iced_core;
