@@ -1,6 +1,6 @@
 use wstk::*;
 
-pub const ICON_SIZE: u16 = 64;
+pub const ICON_SIZE: u16 = 48;
 
 #[derive(Clone)]
 pub enum IconHandle {
