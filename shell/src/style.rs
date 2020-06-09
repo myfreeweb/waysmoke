@@ -15,18 +15,6 @@ impl container::StyleSheet for DarkBar {
     }
 }
 
-pub struct WhiteStripe;
-
-impl container::StyleSheet for WhiteStripe {
-    fn style(&self) -> container::Style {
-        container::Style {
-            background: Some(Background::Color(Color::WHITE)),
-            border_radius: 2,
-            ..container::Style::default()
-        }
-    }
-}
-
 pub struct Dock;
 
 impl container::StyleSheet for Dock {

@@ -237,7 +237,7 @@ impl IcedWidget for Dock {
             );
         } else {
             col = col.push(
-                Container::new(Text::new("".to_string()).size(0))
+                prim::Prim::new(iced_graphics::Primitive::None)
                     .height(Length::Units(OVERHANG_HEIGHT)),
             );
         }
@@ -263,20 +263,25 @@ impl IcedWidget for Dock {
             .center_x();
 
             col = col.push(dock).push(
-                Container::new(Text::new("".to_string()).size(0)).height(Length::Units(DOCK_GAP)),
+                prim::Prim::new(iced_graphics::Primitive::None).height(Length::Units(DOCK_GAP)),
             );
         } else {
             col = col.push(
-                Container::new(Text::new("".to_string()).size(0))
+                prim::Prim::new(iced_graphics::Primitive::None)
                     .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
             );
         }
 
         let bar = Container::new(
-            Container::new(Text::new("".to_string()).size(0))
-                .style(style::WhiteStripe)
-                .width(Length::Units(128))
-                .height(Length::Units(4)),
+            prim::Prim::new(iced_graphics::Primitive::Quad {
+                bounds: iced_graphics::Rectangle::with_size(Size::new(192.0, 4.0)),
+                background: Background::Color(Color::WHITE),
+                border_radius: 2,
+                border_width: 0,
+                border_color: Color::WHITE,
+            })
+            .width(Length::Units(192))
+            .height(Length::Units(4)),
         )
         .style(style::DarkBar)
         .width(Length::Fill)
