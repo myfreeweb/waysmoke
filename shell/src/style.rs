@@ -46,3 +46,31 @@ impl button::StyleSheet for Dock {
         }
     }
 }
+
+pub struct Toplevel;
+
+impl button::StyleSheet for Toplevel {
+    fn active(&self) -> button::Style {
+        button::Style {
+            background: Some(Background::Color(Color::from_rgba8(20, 20, 20, 0.85))),
+            border_radius: 3,
+            text_color: Color::WHITE,
+            ..button::Style::default()
+        }
+    }
+
+    fn hovered(&self) -> button::Style {
+        button::Style {
+            background: Some(Background::Color(Color::from_rgba8(69, 69, 69, 0.85))),
+            ..self.active()
+        }
+    }
+
+    fn pressed(&self) -> button::Style {
+        button::Style {
+            border_width: 1,
+            border_color: Color::WHITE,
+            ..self.hovered()
+        }
+    }
+}
