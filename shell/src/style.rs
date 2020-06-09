@@ -2,6 +2,8 @@ use iced_core::{Background, Color};
 use iced_graphics::*;
 use wstk::*;
 
+pub const DARK_COLOR: Color = Color::from_rgba(0.0784, 0.0784, 0.0784, 0.85);
+
 pub struct DarkBar;
 
 impl container::StyleSheet for DarkBar {
@@ -30,7 +32,7 @@ pub struct Dock;
 impl container::StyleSheet for Dock {
     fn style(&self) -> container::Style {
         container::Style {
-            background: Some(Background::Color(Color::from_rgba8(20, 20, 20, 0.85))),
+            background: Some(Background::Color(DARK_COLOR)),
             text_color: Some(Color::WHITE),
             border_radius: 3,
             ..container::Style::default()
@@ -52,7 +54,7 @@ pub struct Toplevel;
 impl button::StyleSheet for Toplevel {
     fn active(&self) -> button::Style {
         button::Style {
-            background: Some(Background::Color(Color::from_rgba8(20, 20, 20, 0.85))),
+            background: Some(Background::Color(DARK_COLOR)),
             border_radius: 3,
             text_color: Color::WHITE,
             ..button::Style::default()

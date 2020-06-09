@@ -191,6 +191,7 @@ impl IcedWidget for Dock {
             .width(Length::Fill)
             .horizontal_alignment(HorizontalAlignment::Center)
             .size(16);
+            use iced_graphics::triangle::{Mesh2D, Vertex2D};
             col = col.push(
                 Container::new(
                     Column::new()
@@ -205,12 +206,28 @@ impl IcedWidget for Dock {
                             .padding(DOCK_PADDING),
                         )
                         .push(
-                            // TODO: triangle
-                            Container::new(Text::new("".to_owned()).size(0))
-                                .style(style::Dock)
-                                .center_x()
-                                .width(Length::Units(16))
-                                .height(Length::Units(8)),
+                            prim::Prim::new(iced_graphics::Primitive::Mesh2D {
+                                buffers: Mesh2D {
+                                    vertices: vec![
+                                        Vertex2D {
+                                            position: [0.0, 0.0],
+                                            color: style::DARK_COLOR.into_linear(),
+                                        },
+                                        Vertex2D {
+                                            position: [8.0, 8.0],
+                                            color: style::DARK_COLOR.into_linear(),
+                                        },
+                                        Vertex2D {
+                                            position: [16.0, 0.0],
+                                            color: style::DARK_COLOR.into_linear(),
+                                        },
+                                    ],
+                                    indices: vec![0, 1, 2],
+                                },
+                                size: iced_graphics::Size::new(16.0, 8.0),
+                            })
+                            .width(Length::Units(16))
+                            .height(Length::Units(8)),
                         ),
                 )
                 .width(Length::Fill)
