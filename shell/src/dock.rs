@@ -11,10 +11,64 @@ pub const OVERHANG_HEIGHT: u16 = 420;
 pub const TOPLEVELS_WIDTH: u16 = 290;
 pub const APP_PADDING: u16 = 4;
 pub const DOCK_PADDING: u16 = 4;
-pub const DOCK_GAP: u16 = 6;
+pub const DOCK_GAP: u16 = 8;
 pub const BAR_HEIGHT: u16 = 10;
 pub const DOCK_AND_GAP_HEIGHT: u16 =
     icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2 + DOCK_GAP;
+
+fn overhang(width: iced_native::Length, content: Element<Msg>) -> Element<Msg> {
+    use iced_graphics::{
+        triangle::{Mesh2D, Vertex2D},
+        Primitive,
+    };
+    use iced_native::*;
+
+    let content_box = Container::new(content)
+        .style(style::Dock)
+        .width(Length::Fill)
+        .padding(DOCK_PADDING);
+
+    let triangle = prim::Prim::new(Primitive::Mesh2D {
+        buffers: Mesh2D {
+            vertices: vec![
+                Vertex2D {
+                    position: [0.0, 0.0],
+                    color: style::DARK_COLOR.into_linear(),
+                },
+                Vertex2D {
+                    position: [8.0, 8.0],
+                    color: style::DARK_COLOR.into_linear(),
+                },
+                Vertex2D {
+                    position: [16.0, 0.0],
+                    color: style::DARK_COLOR.into_linear(),
+                },
+            ],
+            indices: vec![0, 1, 2],
+        },
+        size: iced_graphics::Size::new(16.0, 8.0),
+    })
+    .width(Length::Units(16))
+    .height(Length::Units(8));
+
+    let content_col = Column::new()
+        .align_items(Align::Center)
+        .width(width)
+        .push(content_box)
+        .push(triangle);
+
+    Container::new(
+        Row::new()
+            .height(Length::Shrink)
+            .push(content_col)
+            // .push(prim::Prim::new(Primitive::None).height(Length::Units(0)).width(Length::Units(69))), // TODO offset
+    )
+    .width(Length::Fill)
+    .height(Length::Units(OVERHANG_HEIGHT))
+    .center_x()
+    .align_y(Align::End)
+    .into()
+}
 
 #[derive(Debug, Clone)]
 pub enum Msg {
@@ -191,50 +245,14 @@ impl IcedWidget for Dock {
             .width(Length::Fill)
             .horizontal_alignment(HorizontalAlignment::Center)
             .size(16);
-            use iced_graphics::triangle::{Mesh2D, Vertex2D};
-            col = col.push(
-                Container::new(
-                    Column::new()
-                        .align_items(Align::Center)
-                        .width(Length::Units(TOPLEVELS_WIDTH))
-                        .push(
-                            Container::new(
-                                Column::new().push(title).push(btns).spacing(DOCK_PADDING),
-                            )
-                            .style(style::Dock)
-                            .width(Length::Fill)
-                            .padding(DOCK_PADDING),
-                        )
-                        .push(
-                            prim::Prim::new(iced_graphics::Primitive::Mesh2D {
-                                buffers: Mesh2D {
-                                    vertices: vec![
-                                        Vertex2D {
-                                            position: [0.0, 0.0],
-                                            color: style::DARK_COLOR.into_linear(),
-                                        },
-                                        Vertex2D {
-                                            position: [8.0, 8.0],
-                                            color: style::DARK_COLOR.into_linear(),
-                                        },
-                                        Vertex2D {
-                                            position: [16.0, 0.0],
-                                            color: style::DARK_COLOR.into_linear(),
-                                        },
-                                    ],
-                                    indices: vec![0, 1, 2],
-                                },
-                                size: iced_graphics::Size::new(16.0, 8.0),
-                            })
-                            .width(Length::Units(16))
-                            .height(Length::Units(8)),
-                        ),
-                )
-                .width(Length::Fill)
-                .height(Length::Units(OVERHANG_HEIGHT))
-                .center_x()
-                .align_y(Align::End),
-            );
+            col = col.push(overhang(
+                Length::Units(TOPLEVELS_WIDTH),
+                Column::new()
+                    .push(title)
+                    .push(btns)
+                    .spacing(DOCK_PADDING)
+                    .into(),
+            ));
         } else {
             col = col.push(
                 prim::Prim::new(iced_graphics::Primitive::None)
