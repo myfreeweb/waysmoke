@@ -140,7 +140,6 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         widget.setup_lsh(&layer_surface);
 
         let mut compositor = WgpuCompositor::request(iced_wgpu::Settings {
-            background_color: iced_core::Color::TRANSPARENT,
             ..iced_wgpu::Settings::default()
         })
         .await
@@ -222,6 +221,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
+                iced_core::Color::TRANSPARENT,
                 &(primitive, mi),
                 &[],
             );
@@ -252,6 +252,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
+                iced_core::Color::TRANSPARENT,
                 &(primitive, mi),
                 &[],
             );
