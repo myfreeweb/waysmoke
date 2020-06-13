@@ -4,7 +4,7 @@ pub use smithay_client_toolkit::{
     get_surface_scale_factor,
     reexports::{
         client::{
-            protocol::{wl_compositor, wl_pointer, wl_seat, wl_surface},
+            protocol::{wl_compositor, wl_pointer, wl_region, wl_seat, wl_surface},
             Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
         },
         protocols::wlr::unstable::foreign_toplevel::v1::client::{
@@ -59,7 +59,12 @@ pub struct DesktopInstance {
 }
 
 impl DesktopInstance {
-    pub fn new(env: Environment<Env>, display: Display, queue: &EventQueue) -> DesktopInstance {
+    pub fn new(
+        surface: &dyn DesktopSurface,
+        env: Environment<Env>,
+        display: Display,
+        queue: &EventQueue,
+    ) -> DesktopInstance {
         let layer_shell = env.require_global::<layer_shell::ZwlrLayerShellV1>();
 
         let (scale_tx, scale_rx) = mpsc::unbounded();
@@ -85,7 +90,8 @@ impl DesktopInstance {
             layer_shell::Layer::Top,
             "Waysmoke Surface".to_owned(),
         );
-        // widget.setup_lsh(&layer_surface);
+        surface.setup_lsh(&layer_surface);
+
         DesktopInstance {
             env,
             display,
@@ -97,5 +103,23 @@ impl DesktopInstance {
 
     pub fn raw_handle(&self) -> ToRWH {
         ToRWH((*self.wl_surface.as_ref()).clone(), (*self.display).clone())
+    }
+
+    pub fn flush(&self) {
+        self.display.flush().unwrap();
+    }
+
+    pub fn create_region(&self) -> Main<wl_region::WlRegion> {
+        self.env
+            .require_global::<wl_compositor::WlCompositor>()
+            .create_region()
+    }
+
+    pub fn set_input_region(&self, region: Main<wl_region::WlRegion>) {
+        self.wl_surface.set_input_region(Some(&region.detach()));
+    }
+
+    pub fn clear_input_region(&self) {
+        self.wl_surface.set_input_region(None);
     }
 }

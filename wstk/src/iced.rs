@@ -30,7 +30,7 @@ pub trait IcedSurface {
 
 pub struct IcedInstance<T> {
     parent: DesktopInstance,
-    widget: T,
+    surface: T,
 
     // wayland state
     ptr_active: bool,
@@ -51,13 +51,12 @@ pub struct IcedInstance<T> {
 
 impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     pub async fn new(
-        widget: T,
+        surface: T,
         env: Environment<Env>,
         display: Display,
         queue: &EventQueue,
     ) -> IcedInstance<T> {
-        let parent = DesktopInstance::new(env, display, queue);
-        widget.setup_lsh(&parent.layer_surface);
+        let parent = DesktopInstance::new(&surface, env, display, queue);
 
         let mut compositor = WgpuCompositor::request(iced_wgpu::Settings {
             ..iced_wgpu::Settings::default()
@@ -67,11 +66,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         let renderer = iced_wgpu::Renderer::new(compositor.create_backend());
         let gpu_surface = compositor.create_surface(&parent.raw_handle());
         parent.wl_surface.commit();
-        parent.display.flush().unwrap();
+        parent.flush();
 
         IcedInstance {
             parent,
-            widget,
+            surface,
             ptr_active: false,
             scale: 1,
             leave_timeout: None,
@@ -89,23 +88,17 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn render(&mut self) {
         let reg = self
-            .widget
+            .surface
             .input_region(self.size.width as i32, self.size.height as i32);
         if reg != self.prev_input_region {
             if let Some(ref rects) = reg {
-                let wlreg = self
-                    .parent
-                    .env
-                    .require_global::<wl_compositor::WlCompositor>()
-                    .create_region();
+                let wlreg = self.parent.create_region();
                 for rect in rects.iter() {
                     wlreg.add(rect.x, rect.y, rect.width, rect.height);
                 }
-                self.parent
-                    .wl_surface
-                    .set_input_region(Some(&wlreg.detach()));
+                self.parent.set_input_region(wlreg);
             } else {
-                self.parent.wl_surface.set_input_region(None);
+                self.parent.clear_input_region();
             }
         }
         self.prev_input_region = reg;
@@ -113,7 +106,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
         let mut user_interface = UserInterface::build(
-            self.widget.view(),
+            self.surface.view(),
             self.size,
             self.cache.clone(),
             &mut self.renderer,
@@ -149,12 +142,12 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             let temp_cache = user_interface.into_cache();
 
             for message in messages {
-                self.widget.update(message).await;
+                self.surface.update(message).await;
             }
-            self.parent.display.flush().unwrap();
+            self.parent.flush();
 
             let user_interface = UserInterface::build(
-                self.widget.view(),
+                self.surface.view(),
                 self.size,
                 temp_cache,
                 &mut self.renderer,
@@ -220,7 +213,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 if self.parent.wl_surface.detach() == *surface {
                     self.ptr_active = true;
                     self.leave_timeout = None;
-                    self.widget.on_pointer_enter().await;
+                    self.surface.on_pointer_enter().await;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
@@ -284,12 +277,12 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
                 sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
                 ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
-                    self.widget.react(event).await;
-                    self.parent.display.flush().unwrap();
+                    self.surface.react(event).await;
+                    self.parent.flush();
                     self.render().await
                 },
                 () = leave_timeout => {
-                    self.widget.on_pointer_leave().await;
+                    self.surface.on_pointer_leave().await;
                     // not getting a pointer frame after the timeout ;)
                     self.render().await;
                 },
