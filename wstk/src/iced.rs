@@ -1,23 +1,3 @@
-use smithay_client_toolkit::{
-    default_environment, get_surface_scale_factor, init_default_environment,
-};
-pub use smithay_client_toolkit::{
-    environment::{Environment, SimpleGlobal},
-    reexports::{
-        client::{
-            protocol::{wl_compositor, wl_pointer, wl_seat, wl_surface},
-            Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
-        },
-        protocols::wlr::unstable::foreign_toplevel::v1::client::{
-            zwlr_foreign_toplevel_handle_v1 as toplevel_handle,
-            zwlr_foreign_toplevel_manager_v1 as toplevel_manager,
-        },
-        protocols::wlr::unstable::layer_shell::v1::client::{
-            zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
-        },
-    },
-};
-
 use iced_graphics::window::Compositor;
 pub use iced_native::Rectangle;
 use iced_native::{mouse, Cache, Damage, Size, UserInterface};
@@ -25,45 +5,15 @@ use iced_wgpu::window::Compositor as WgpuCompositor;
 
 use std::{marker::Unpin, pin::Pin, sync::Arc};
 
-use futures::channel::mpsc;
+pub use async_trait::async_trait;
 pub use futures::prelude::*;
 
-pub use async_trait::async_trait;
-
-use crate::{event_loop::*, handle::*, toplevels::*};
-
-default_environment!(Env,
-    fields = [
-        layer_shell: SimpleGlobal<layer_shell::ZwlrLayerShellV1>,
-        toplevel_manager: ToplevelHandler,
-    ],
-    singles = [
-        layer_shell::ZwlrLayerShellV1 => layer_shell,
-        toplevel_manager::ZwlrForeignToplevelManagerV1 => toplevel_manager,
-    ],
-);
-toplevel_handler!(Env, toplevel_manager);
-
-pub fn make_env() -> Result<(Environment<Env>, Display, EventQueue), ConnectError> {
-    init_default_environment!(
-        Env,
-        fields = [
-            layer_shell: SimpleGlobal::new(),
-            toplevel_manager: ToplevelHandler::new(),
-        ]
-    )
-}
-
-static mut SCALE_CHANNELS: Vec<(wl_surface::WlSurface, mpsc::UnboundedSender<i32>)> = Vec::new();
-
-pub trait DesktopWidget {
-    fn setup_lsh(&self, layer_surface: &Main<layer_surface::ZwlrLayerSurfaceV1>);
-}
+use crate::{event_loop::*, surfaces::*};
 
 pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Renderer>;
 
 #[async_trait(?Send)]
-pub trait IcedWidget {
+pub trait IcedSurface {
     type Message: std::fmt::Debug + Send;
     type ExternalEvent: std::fmt::Debug + Send;
 
@@ -79,14 +29,8 @@ pub trait IcedWidget {
 }
 
 pub struct IcedInstance<T> {
+    parent: DesktopInstance,
     widget: T,
-
-    // wayland handles
-    env: Environment<Env>,
-    display: Display,
-    wl_surface: Attached<wl_surface::WlSurface>,
-    layer_surface: Main<layer_surface::ZwlrLayerSurfaceV1>,
-    scale_rx: mpsc::UnboundedReceiver<i32>,
 
     // wayland state
     ptr_active: bool,
@@ -105,39 +49,15 @@ pub struct IcedInstance<T> {
     queue: Vec<iced_native::Event>,
 }
 
-impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
+impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     pub async fn new(
         widget: T,
         env: Environment<Env>,
         display: Display,
         queue: &EventQueue,
     ) -> IcedInstance<T> {
-        let layer_shell = env.require_global::<layer_shell::ZwlrLayerShellV1>();
-
-        let (scale_tx, scale_rx) = mpsc::unbounded();
-        let wl_surface: Proxy<wl_surface::WlSurface> = env
-            .create_surface_with_scale_callback(|scale, wlsurf, _dd| unsafe {
-                SCALE_CHANNELS
-                    .iter()
-                    .find(|(surf, _)| *surf == wlsurf)
-                    .unwrap()
-                    .1
-                    .unbounded_send(scale)
-                    .unwrap();
-            })
-            .into();
-        let wl_surface = wl_surface.attach(queue.token());
-        unsafe {
-            SCALE_CHANNELS.push((wl_surface.detach(), scale_tx));
-        }
-
-        let layer_surface = layer_shell.get_layer_surface(
-            &wl_surface,
-            None,
-            layer_shell::Layer::Top,
-            "Waysmoke Surface".to_owned(),
-        );
-        widget.setup_lsh(&layer_surface);
+        let parent = DesktopInstance::new(env, display, queue);
+        widget.setup_lsh(&parent.layer_surface);
 
         let mut compositor = WgpuCompositor::request(iced_wgpu::Settings {
             ..iced_wgpu::Settings::default()
@@ -145,18 +65,13 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         .await
         .unwrap();
         let renderer = iced_wgpu::Renderer::new(compositor.create_backend());
-        let gpu_surface =
-            compositor.create_surface(&ToRWH((*wl_surface.as_ref()).clone(), (*display).clone()));
-        wl_surface.commit();
-        display.flush().unwrap();
+        let gpu_surface = compositor.create_surface(&parent.raw_handle());
+        parent.wl_surface.commit();
+        parent.display.flush().unwrap();
 
         IcedInstance {
+            parent,
             widget,
-            env,
-            display,
-            wl_surface,
-            layer_surface,
-            scale_rx,
             ptr_active: false,
             scale: 1,
             leave_timeout: None,
@@ -179,15 +94,18 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
         if reg != self.prev_input_region {
             if let Some(ref rects) = reg {
                 let wlreg = self
+                    .parent
                     .env
                     .require_global::<wl_compositor::WlCompositor>()
                     .create_region();
                 for rect in rects.iter() {
                     wlreg.add(rect.x, rect.y, rect.width, rect.height);
                 }
-                self.wl_surface.set_input_region(Some(&wlreg.detach()));
+                self.parent
+                    .wl_surface
+                    .set_input_region(Some(&wlreg.detach()));
             } else {
-                self.wl_surface.set_input_region(None);
+                self.parent.wl_surface.set_input_region(None);
             }
         }
         self.prev_input_region = reg;
@@ -233,7 +151,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             for message in messages {
                 self.widget.update(message).await;
             }
-            self.display.flush().unwrap();
+            self.parent.display.flush().unwrap();
 
             let user_interface = UserInterface::build(
                 self.widget.view(),
@@ -266,7 +184,7 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             self.size.width as u32 * self.scale as u32,
             self.size.height as u32 * self.scale as u32,
         ));
-        self.wl_surface.set_buffer_scale(self.scale);
+        self.parent.wl_surface.set_buffer_scale(self.scale);
     }
 
     async fn on_scale(&mut self, scale: i32) {
@@ -285,9 +203,9 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
                 ref width,
                 ref height,
             } => {
-                self.layer_surface.ack_configure(*serial);
+                self.parent.layer_surface.ack_configure(*serial);
 
-                self.scale = get_surface_scale_factor(&self.wl_surface);
+                self.scale = get_surface_scale_factor(&self.parent.wl_surface);
                 self.size = Size::new((*width) as f32, (*height) as f32);
                 self.create_swap_chain();
                 self.render().await;
@@ -299,14 +217,14 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
     async fn on_pointer_event(&mut self, event: Arc<wl_pointer::Event>) {
         match &*event {
             wl_pointer::Event::Enter { surface, .. } => {
-                if self.wl_surface.detach() == *surface {
+                if self.parent.wl_surface.detach() == *surface {
                     self.ptr_active = true;
                     self.leave_timeout = None;
                     self.widget.on_pointer_enter().await;
                 }
             }
             wl_pointer::Event::Leave { surface, .. } => {
-                if self.wl_surface.detach() == *surface {
+                if self.parent.wl_surface.detach() == *surface {
                     self.ptr_active = false;
                     self.leave_timeout = Some(glib::timeout_future(420).fuse());
                 }
@@ -350,9 +268,9 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
     }
 
     pub async fn run(&mut self, ext_evt_src: &mut (impl Stream<Item = T::ExternalEvent> + Unpin)) {
-        let seat = &self.env.get_all_seats()[0];
+        let seat = &self.parent.env.get_all_seats()[0];
         let mut ptr_events = wayland_event_chan(&seat.get_pointer());
-        let mut layer_events = wayland_event_chan(&self.layer_surface);
+        let mut layer_events = wayland_event_chan(&self.parent.layer_surface);
 
         loop {
             let leave_timeout_existed = self.leave_timeout.is_some();
@@ -364,10 +282,10 @@ impl<T: DesktopWidget + IcedWidget> IcedInstance<T> {
             futures::select! {
                 ev = layer_events.next() => if let Some(event) = ev { self.on_layer_event(event).await },
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
-                sc = self.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
+                sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
                 ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
                     self.widget.react(event).await;
-                    self.display.flush().unwrap();
+                    self.parent.display.flush().unwrap();
                     self.render().await
                 },
                 () = leave_timeout => {

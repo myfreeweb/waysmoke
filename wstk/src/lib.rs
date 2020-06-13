@@ -8,6 +8,9 @@ pub use event_loop::*;
 pub mod toplevels;
 pub use toplevels::*;
 
+pub mod surfaces;
+pub use surfaces::*;
+
 pub mod iced;
 pub use iced::*;
 

@@ -58,10 +58,7 @@ fn overhang(width: iced_native::Length, content: Element<Msg>) -> Element<Msg> {
         .push(triangle);
 
     Container::new(
-        Row::new()
-            .height(Length::Shrink)
-            .push(content_col)
-            // .push(prim::Prim::new(Primitive::None).height(Length::Units(0)).width(Length::Units(69))), // TODO offset
+        Row::new().height(Length::Shrink).push(content_col), // .push(prim::Prim::new(Primitive::None).height(Length::Units(0)).width(Length::Units(69))), // TODO offset
     )
     .width(Length::Fill)
     .height(Length::Units(OVERHANG_HEIGHT))
@@ -188,7 +185,7 @@ impl Dock {
     }
 }
 
-impl DesktopWidget for Dock {
+impl DesktopSurface for Dock {
     fn setup_lsh(&self, layer_surface: &Main<layer_surface::ZwlrLayerSurfaceV1>) {
         layer_surface.set_anchor(
             layer_surface::Anchor::Left
@@ -201,7 +198,7 @@ impl DesktopWidget for Dock {
 }
 
 #[async_trait(?Send)]
-impl IcedWidget for Dock {
+impl IcedSurface for Dock {
     type Message = Msg;
     type ExternalEvent = ();
 
