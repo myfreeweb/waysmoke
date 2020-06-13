@@ -2267,6 +2267,7 @@ dependencies = [
  "glib",
  "lazy_static",
  "linicon",
+ "wgpu",
  "wstk",
 ]
 

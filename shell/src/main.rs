@@ -4,6 +4,7 @@ use wstk::*;
 mod dock;
 mod style;
 mod util;
+mod wallpaper;
 
 async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     // TODO: multi-monitor handling
@@ -19,24 +20,21 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     //     }
     // }
 
-    // let toplevel_manager = env.require_global::<toplevel_manager::ZwlrForeignToplevelManagerV1>();
     let (toplevels, mut toplevel_updates) =
         env.with_inner(|i| (i.toplevels(), i.toplevel_updates()));
 
     let seat = env.get_all_seats()[0].detach();
-    let mut test = IcedInstance::new(
+    let mut dock = IcedInstance::new(
         dock::Dock::new(seat, toplevels),
         env.clone(),
         display.clone(),
         queue,
     )
     .await;
-    // let mut test2 = IcedInstance::new(Test::default(), env.clone(), display.clone(), queue).await;
-    // let mut pend = glib::unix_signal_stream(30).map(|()| dock::Evt::Sig);
-    futures::join!(
-        test.run(&mut toplevel_updates),
-        // test2.run(),
-    );
+
+    let mut wallpaper = wallpaper::Wallpaper::new(env.clone(), display.clone(), queue).await;
+
+    futures::join!(dock.run(&mut toplevel_updates), wallpaper.run());
 }
 
 wstk_main!(main_);
