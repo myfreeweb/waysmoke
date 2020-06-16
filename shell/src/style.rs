@@ -3,6 +3,7 @@ use iced_graphics::*;
 use wstk::*;
 
 pub const DARK_COLOR: Color = Color::from_rgba(0.0784, 0.0784, 0.0784, 0.85);
+pub const RUNNING_DARK_COLOR: Color = Color::from_rgba(0.1584, 0.1584, 0.1784, 0.85);
 
 pub struct DarkBar;
 
@@ -15,12 +16,12 @@ impl container::StyleSheet for DarkBar {
     }
 }
 
-pub struct Dock;
+pub struct Dock(pub Color);
 
 impl container::StyleSheet for Dock {
     fn style(&self) -> container::Style {
         container::Style {
-            background: Some(Background::Color(DARK_COLOR)),
+            background: Some(Background::Color(self.0)),
             text_color: Some(Color::WHITE),
             border_radius: 3,
             ..container::Style::default()

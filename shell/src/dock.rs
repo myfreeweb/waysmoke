@@ -24,7 +24,7 @@ fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>)
     use iced_native::*;
 
     let content_box = Container::new(content)
-        .style(style::Dock)
+        .style(style::Dock(style::DARK_COLOR))
         .width(Length::Fill)
         .padding(DOCK_PADDING);
 
@@ -121,11 +121,11 @@ impl DockApp {
         &self.app.id
     }
 
-    fn widget(&mut self, position: usize) -> Element<Msg> {
+    fn widget(&mut self, position: usize, running: bool) -> Element<Msg> {
         use iced_native::*;
 
         let big_button = Button::new(&mut self.button, self.icon.clone().widget())
-            .style(style::Dock)
+            .style(style::Dock(style::DARK_COLOR))
             .padding(APP_PADDING)
             .on_press(Msg::ActivateApp(position));
 
@@ -133,9 +133,13 @@ impl DockApp {
             .on_pointer_enter(Msg::HoverApp(position));
 
         Container::new(listener)
-            .style(style::Dock)
             .center_x()
             .center_y()
+            .style(style::Dock(if running {
+                style::RUNNING_DARK_COLOR
+            } else {
+                style::DARK_COLOR
+            }))
             .into()
     }
 
@@ -170,10 +174,10 @@ impl Dock {
 
     fn update_apps(&mut self) {
         let docked = vec![
-            "Nightly",
+            "firefox",
             "Alacritty",
             "org.gnome.Lollypop",
-            "pavucontrol",
+            "org.gnome.Nautilus",
             "telegramdesktop",
         ]; // TODO: GSettings
 
@@ -298,15 +302,19 @@ impl IcedSurface for Dock {
         //      so for now we just make the dock invisible
 
         // if self.shown {
+        let toplevels = self.toplevels.borrow();
         let row = self.apps.iter_mut().enumerate().fold(
             Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
-            |row, (i, app)| row.push(app.widget(i)),
+            |row, (i, app)| {
+                let running = toplevels.values().any(|topl| topl.matches_id(app.id()));
+                row.push(app.widget(i, running))
+            },
         );
         // TODO: show toplevels for unrecognized apps
 
         let dock = Container::new(
             Container::new(row)
-                .style(style::Dock)
+                .style(style::Dock(style::DARK_COLOR))
                 .width(Length::Shrink)
                 .height(Length::Shrink)
                 .center_x()
