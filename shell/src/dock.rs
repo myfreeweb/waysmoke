@@ -16,7 +16,7 @@ pub const BAR_HEIGHT: u16 = 10;
 pub const DOCK_HEIGHT: u16 = icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2;
 pub const DOCK_AND_GAP_HEIGHT: u16 = DOCK_HEIGHT + DOCK_GAP;
 
-fn overhang(width: iced_native::Length, content: Element<Msg>) -> Element<Msg> {
+fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
     use iced_graphics::{
         triangle::{Mesh2D, Vertex2D},
         Primitive,
@@ -57,14 +57,28 @@ fn overhang(width: iced_native::Length, content: Element<Msg>) -> Element<Msg> {
         .push(content_box)
         .push(triangle);
 
-    Container::new(
-        Row::new().height(Length::Shrink).push(content_col), // .push(prim::Prim::new(Primitive::None).height(Length::Units(0)).width(Length::Units(69))), // TODO offset
-    )
-    .width(Length::Fill)
-    .height(Length::Units(OVERHANG_HEIGHT))
-    .center_x()
-    .align_y(Align::End)
-    .into()
+    let mut offset_row = Row::new().height(Length::Shrink);
+    if icon_offset < 0 {
+        offset_row = offset_row.push(
+            prim::Prim::new(Primitive::None)
+                .height(Length::Units(0))
+                .width(Length::Units(-icon_offset as _)),
+        );
+    }
+    offset_row = offset_row.push(content_col);
+    if icon_offset > 0 {
+        offset_row = offset_row.push(
+            prim::Prim::new(Primitive::None)
+                .height(Length::Units(0))
+                .width(Length::Units(icon_offset as _)),
+        );
+    }
+    Container::new(offset_row)
+        .width(Length::Fill)
+        .height(Length::Units(OVERHANG_HEIGHT))
+        .center_x()
+        .align_y(Align::End)
+        .into()
 }
 
 #[derive(Debug, Clone)]
@@ -155,7 +169,13 @@ impl Dock {
     }
 
     fn update_apps(&mut self) {
-        let docked = vec!["Nightly", "Alacritty", "org.gnome.Lollypop"]; // TODO: GSettings
+        let docked = vec![
+            "Nightly",
+            "Alacritty",
+            "org.gnome.Lollypop",
+            "pavucontrol",
+            "telegramdesktop",
+        ]; // TODO: GSettings
 
         for id in docked.iter() {
             if self.apps.iter().find(|a| a.id() == *id).is_none() {
@@ -183,6 +203,20 @@ impl Dock {
                 || toplevels.values().any(|topl| topl.matches_id(a.id()))
         });
     }
+
+    fn width(&self) -> u16 {
+        self.apps.iter().fold(0, |w, app| w + app.width())
+            + DOCK_PADDING * (std::cmp::max(self.apps.len() as u16, 1) - 1)
+            + DOCK_PADDING * 2
+    }
+
+    fn center_of_app(&self, id: usize) -> u16 {
+        DOCK_PADDING
+            + self.apps[..id]
+                .iter()
+                .fold(0, |acc, app| acc + app.width() + DOCK_PADDING)
+            + self.apps[id].width() / 2
+    }
 }
 
 impl DesktopSurface for Dock {
@@ -207,7 +241,9 @@ impl IcedSurface for Dock {
 
         let mut col = Column::new().width(Length::Fill);
 
+        let dock_width = self.width();
         if let Some(appi) = if self.shown { self.hovered_app } else { None } {
+            let our_center = self.center_of_app(appi);
             let toplevels = self.toplevels.borrow();
             let appid = self.apps[appi].id();
             while self.toplevels_buttons.len() < toplevels.values().len() {
@@ -244,6 +280,7 @@ impl IcedSurface for Dock {
             .size(16);
             col = col.push(overhang(
                 Length::Units(TOPLEVELS_WIDTH),
+                (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
                 Column::new()
                     .push(title)
                     .push(btns)
@@ -323,9 +360,7 @@ impl IcedSurface for Dock {
         };
         let mut result = vec![bar];
         if self.shown {
-            let dock_width = (self.apps.iter().fold(0, |w, app| w + app.width())
-                + DOCK_PADDING * (std::cmp::max(self.apps.len() as u16, 1) - 1)
-                + DOCK_PADDING * 2) as _;
+            let dock_width = self.width() as _;
             result.push(Rectangle {
                 x: (width - dock_width) / 2,
                 y: OVERHANG_HEIGHT as _,
@@ -333,10 +368,12 @@ impl IcedSurface for Dock {
                 height: (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _,
             });
         }
-        if let Some(_appi) = if self.shown { self.hovered_app } else { None } {
+        if let Some(appi) = if self.shown { self.hovered_app } else { None } {
             let toplevels_height = 200; // TODO: calc
+            let dock_width = self.width() as i32;
+            let our_center = self.center_of_app(appi) as i32;
             result.push(Rectangle {
-                x: (width - TOPLEVELS_WIDTH as i32) / 2,
+                x: (width - TOPLEVELS_WIDTH as i32) / 2 - (dock_width / 2 - our_center),
                 y: (OVERHANG_HEIGHT - toplevels_height) as _,
                 width: TOPLEVELS_WIDTH as _,
                 height: toplevels_height as _,
