@@ -86,7 +86,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 
-    async fn render(&mut self) {
+    fn update_input_region(&mut self) {
         let reg = self
             .surface
             .input_region(self.size.width as i32, self.size.height as i32);
@@ -100,9 +100,12 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             } else {
                 self.parent.clear_input_region();
             }
+            self.parent.wl_surface.commit();
         }
         self.prev_input_region = reg;
+    }
 
+    async fn render(&mut self) {
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
         let mut user_interface = UserInterface::build(
@@ -126,6 +129,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             self.prev_prim = primitive.clone();
             if dmg == None || dmg.map(|x| x.len()).unwrap_or(0) == 0 {
                 self.cache = user_interface.into_cache();
+                self.update_input_region();
                 return;
             }
             let _new_mouse_cursor = self.compositor.draw::<String>(
@@ -169,6 +173,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             );
             self.cache = user_interface.into_cache();
         }
+        self.update_input_region();
     }
 
     fn create_swap_chain(&mut self) {
@@ -219,7 +224,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             wl_pointer::Event::Leave { surface, .. } => {
                 if self.parent.wl_surface.detach() == *surface {
                     self.ptr_active = false;
-                    self.leave_timeout = Some(glib::timeout_future(420).fuse());
+                    self.leave_timeout = Some(glib::timeout_future(200).fuse());
                 }
             }
             wl_pointer::Event::Button { button, state, .. } => {

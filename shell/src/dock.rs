@@ -13,8 +13,8 @@ pub const APP_PADDING: u16 = 4;
 pub const DOCK_PADDING: u16 = 4;
 pub const DOCK_GAP: u16 = 8;
 pub const BAR_HEIGHT: u16 = 10;
-pub const DOCK_AND_GAP_HEIGHT: u16 =
-    icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2 + DOCK_GAP;
+pub const DOCK_HEIGHT: u16 = icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2;
+pub const DOCK_AND_GAP_HEIGHT: u16 = DOCK_HEIGHT + DOCK_GAP;
 
 fn overhang(width: iced_native::Length, content: Element<Msg>) -> Element<Msg> {
     use iced_graphics::{
@@ -257,35 +257,42 @@ impl IcedSurface for Dock {
             );
         }
 
-        if self.shown {
-            let row = self.apps.iter_mut().enumerate().fold(
-                Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
-                |row, (i, app)| row.push(app.widget(i)),
-            );
-            // TODO: show toplevels for unrecognized apps
+        // XXX: removing the icons from the output causes them to be unloaded
+        //      so for now we just make the dock invisible
 
-            let dock = Container::new(
-                Container::new(row)
-                    .style(style::Dock)
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-                    .center_x()
-                    .center_y()
-                    .padding(DOCK_PADDING),
-            )
-            .width(Length::Fill)
-            .height(Length::Shrink)
-            .center_x();
+        // if self.shown {
+        let row = self.apps.iter_mut().enumerate().fold(
+            Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
+            |row, (i, app)| row.push(app.widget(i)),
+        );
+        // TODO: show toplevels for unrecognized apps
 
-            col = col.push(dock).push(
-                prim::Prim::new(iced_graphics::Primitive::None).height(Length::Units(DOCK_GAP)),
-            );
+        let dock = Container::new(
+            Container::new(row)
+                .style(style::Dock)
+                .width(Length::Shrink)
+                .height(Length::Shrink)
+                .center_x()
+                .center_y()
+                .padding(if self.shown { DOCK_PADDING } else { 0 }),
+        )
+        .width(if self.shown {
+            Length::Fill
         } else {
-            col = col.push(
-                prim::Prim::new(iced_graphics::Primitive::None)
-                    .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
-            );
-        }
+            Length::Units(0)
+        })
+        .height(Length::Units(DOCK_HEIGHT))
+        .center_x();
+
+        col = col
+            .push(dock)
+            .push(prim::Prim::new(iced_graphics::Primitive::None).height(Length::Units(DOCK_GAP)));
+        // } else {
+        //     col = col.push(
+        //         prim::Prim::new(iced_graphics::Primitive::None)
+        //             .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
+        //     );
+        // }
 
         let bar = Container::new(
             prim::Prim::new(iced_graphics::Primitive::Quad {
