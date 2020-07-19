@@ -12,18 +12,18 @@ panic = "abort"
 [patch.crates-io]
 
 # patch: pkg-config
-wayland-client    = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-cursor    = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-sys       = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-scanner   = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-client    = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-cursor    = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-sys       = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-scanner   = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
 
 # note: v0.5 branch
-# patch: transparency
+# patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
 wgpu-core  = { path = "../../gfx-rs/wgpu/wgpu-core/" }
 wgpu-types = { path = "../../gfx-rs/wgpu/wgpu-types/" }
 
 # patch: dbus
-gio  = { git = "https://github.com/gtk-rs/gio" }
-glib = { git = "https://github.com/gtk-rs/glib" } # version required by gio
+# gio  = { git = "https://github.com/gtk-rs/gio" }
+# glib = { git = "https://github.com/gtk-rs/glib" } # version required by gio
