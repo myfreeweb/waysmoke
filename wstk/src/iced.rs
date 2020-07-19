@@ -1,6 +1,6 @@
 use iced_graphics::window::Compositor;
 pub use iced_native::Rectangle;
-use iced_native::{mouse, Cache, Damage, Size, UserInterface};
+use iced_native::{mouse, Cache, Damage, Point, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
 use std::{marker::Unpin, pin::Pin, sync::Arc};
@@ -41,6 +41,7 @@ pub struct IcedInstance<T> {
     // iced render state
     cache: Cache,
     size: Size,
+    cursor_position: Point,
     compositor: WgpuCompositor,
     renderer: <WgpuCompositor as Compositor>::Renderer,
     gpu_surface: <WgpuCompositor as Compositor>::Surface,
@@ -77,6 +78,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             prev_input_region: None,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
+            cursor_position: Point::default(),
             compositor,
             renderer,
             gpu_surface,
@@ -114,7 +116,12 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             self.cache.clone(),
             &mut self.renderer,
         );
-        let messages = user_interface.update(self.queue.drain(..), None, &mut self.renderer);
+        let messages = user_interface.update(
+            &self.queue.drain(..).collect::<Vec<_>>(),
+            self.cursor_position,
+            None,
+            &mut self.renderer,
+        );
         let viewport = iced_graphics::Viewport::with_physical_size(
             iced_graphics::Size::new(
                 self.size.width as u32 * self.scale as u32,
@@ -124,7 +131,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         );
 
         if messages.is_empty() {
-            let (primitive, mi) = user_interface.draw(&mut self.renderer);
+            let (primitive, mi) = user_interface.draw(&mut self.renderer, self.cursor_position);
             let dmg = self.prev_prim.damage(&primitive);
             self.prev_prim = primitive.clone();
             if dmg == None || dmg.map(|x| x.len()).unwrap_or(0) == 0 {
@@ -150,13 +157,13 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             }
             self.parent.flush();
 
-            let user_interface = UserInterface::build(
+            let mut user_interface = UserInterface::build(
                 self.surface.view(),
                 self.size,
                 temp_cache,
                 &mut self.renderer,
             );
-            let (primitive, mi) = user_interface.draw(&mut self.renderer);
+            let (primitive, mi) = user_interface.draw(&mut self.renderer, self.cursor_position);
             let dmg = self.prev_prim.damage(&primitive);
             self.prev_prim = primitive.clone();
             if dmg == None || dmg.map(|x| x.len()).unwrap_or(0) == 0 {
@@ -249,6 +256,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 ..
             } => {
                 if self.ptr_active {
+                    self.cursor_position = Point::new(*surface_x as _, *surface_y as _);
                     self.queue
                         .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
                             x: *surface_x as _,

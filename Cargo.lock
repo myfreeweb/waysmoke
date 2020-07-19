@@ -1039,6 +1039,7 @@ version = "0.2.2"
 dependencies = [
  "iced_core",
  "iced_futures",
+ "num-traits",
  "twox-hash",
  "unicode-segmentation",
 ]
