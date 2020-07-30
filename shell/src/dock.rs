@@ -265,7 +265,7 @@ impl IcedSurface for Dock {
                 btns = btns.push(
                     Button::new(
                         // and even here it complains about "multiple" borrows of self.toplevels_buttons >_<
-                        unsafe { std::mem::transmute::<_, _>(&mut self.toplevels_buttons[i]) },
+                        unsafe { &mut *(&mut self.toplevels_buttons[i] as *mut _) },
                         Text::new(topl.title.clone()).size(14),
                     )
                     .style(style::Toplevel)
