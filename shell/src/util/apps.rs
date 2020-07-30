@@ -52,16 +52,31 @@ impl App {
             .unwrap()
             .get_names();
         let name = names.iter().next()?;
-        // TODO: support scales properly
-        linicon::lookup_icon_with_extra_paths("Adwaita", name, icons::ICON_SIZE * 2, 1, &PATHS[..])
-            .unwrap()
-            .flat_map(|x| x)
+        // TODO: get current scale from caller instead of assuming 2
+        icons_iter("Adwaita", name, icons::ICON_SIZE, 2)
+            .chain(icons_iter("Adwaita", name, icons::ICON_SIZE * 2, 1))
+            .chain(icons_iter("Adwaita", name, icons::ICON_SIZE, 1))
+            .chain(icons_iter("Adwaita", name, 512, 1))
+            .chain(icons_iter("Adwaita", name, 256, 1))
+            .chain(icons_iter("Adwaita", name, 128, 1))
+            .chain(icons_iter("Adwaita", name, 32, 1))
             .next()
             .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.svg", name), SVG))
             .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.png", name), PNG))
             .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.svg", name), SVG))
             .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.png", name), PNG))
     }
+}
+
+fn icons_iter(
+    theme: &str,
+    name: &str,
+    size: u16,
+    scale: u16,
+) -> impl Iterator<Item = linicon::IconPath> {
+    linicon::lookup_icon_with_extra_paths(theme, name, size, scale, &PATHS[..])
+        .unwrap()
+        .flat_map(|x| x)
 }
 
 fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPath> {
