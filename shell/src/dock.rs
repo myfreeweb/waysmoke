@@ -173,6 +173,8 @@ impl Dock {
     }
 
     fn update_apps(&mut self) {
+        self.hovered_app = None;
+
         let docked = vec![
             "firefox",
             "Alacritty",
