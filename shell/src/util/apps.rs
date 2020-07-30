@@ -42,30 +42,53 @@ impl App {
     }
 
     pub fn icon(&self) -> Option<linicon::IconPath> {
-        use gio::AppInfoExt;
+        use gio::{AppInfoExt, FileExt};
         use glib::object::Cast;
-        use linicon::IconType::*;
-        let names = self
-            .info
-            .get_icon()?
-            .downcast::<gio::ThemedIcon>()
-            .unwrap()
-            .get_names();
-        let name = names.iter().next()?;
-        // TODO: get current scale from caller instead of assuming 2
-        icons_iter("Adwaita", name, icons::ICON_SIZE, 2)
-            .chain(icons_iter("Adwaita", name, icons::ICON_SIZE * 2, 1))
-            .chain(icons_iter("Adwaita", name, icons::ICON_SIZE, 1))
-            .chain(icons_iter("Adwaita", name, 512, 1))
-            .chain(icons_iter("Adwaita", name, 256, 1))
-            .chain(icons_iter("Adwaita", name, 128, 1))
-            .chain(icons_iter("Adwaita", name, 32, 1))
-            .next()
-            .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.svg", name), SVG))
-            .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.png", name), PNG))
-            .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.svg", name), SVG))
-            .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.png", name), PNG))
+        let icon = self.info.get_icon()?;
+        if let Some(ticon) = icon.downcast_ref::<gio::ThemedIcon>() {
+            return themed_icon(ticon);
+        }
+        if let Some(ficon) = icon.downcast_ref::<gio::FileIcon>() {
+            let path = ficon.get_file()?.get_path()?;
+            let icon_type = if tree_magic_mini::match_filepath("image/svg+xml", &path) {
+                linicon::IconType::SVG
+            } else if tree_magic_mini::match_filepath("image/png", &path) {
+                linicon::IconType::PNG
+            } else {
+                eprintln!(
+                    "Icon '{:?}' has unsupported type {:?}",
+                    &path,
+                    tree_magic_mini::from_filepath(&path)
+                );
+                return None;
+            };
+            return Some(linicon::IconPath {
+                path,
+                theme: "hicolor".to_string(),
+                icon_type,
+            });
+        }
+        None
     }
+}
+
+fn themed_icon(icon: &gio::ThemedIcon) -> Option<linicon::IconPath> {
+    use linicon::IconType::*;
+    let names = icon.get_names();
+    let name = names.iter().next()?;
+    // TODO: get current scale from caller instead of assuming 2
+    icons_iter("Adwaita", name, icons::ICON_SIZE, 2)
+        .chain(icons_iter("Adwaita", name, icons::ICON_SIZE * 2, 1))
+        .chain(icons_iter("Adwaita", name, icons::ICON_SIZE, 1))
+        .chain(icons_iter("Adwaita", name, 512, 1))
+        .chain(icons_iter("Adwaita", name, 256, 1))
+        .chain(icons_iter("Adwaita", name, 128, 1))
+        .chain(icons_iter("Adwaita", name, 32, 1))
+        .next()
+        .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.svg", name), SVG))
+        .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.png", name), PNG))
+        .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.svg", name), SVG))
+        .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.png", name), PNG))
 }
 
 fn icons_iter(

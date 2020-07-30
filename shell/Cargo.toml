@@ -10,6 +10,7 @@ futures = "0.3"
 glib = "0.9"
 gio = { version = "0.8", features = ["v2_46"] }
 linicon = "0.4"
+tree_magic_mini = "1"
 wgpu = "*"
 
 wstk = { path = "../wstk" }
