@@ -150,7 +150,8 @@ impl DockApp {
 }
 
 pub struct Dock {
-    shown: bool,
+    is_pointed: bool,
+    is_touched: bool,
     seat: wl_seat::WlSeat,
     toplevels: ToplevelStates,
     apps: Vec<DockApp>,
@@ -162,7 +163,8 @@ pub struct Dock {
 impl Dock {
     pub fn new(seat: wl_seat::WlSeat, toplevels: ToplevelStates) -> Dock {
         Dock {
-            shown: false,
+            is_pointed: false,
+            is_touched: false,
             seat,
             toplevels,
             apps: Vec::new(),
@@ -248,7 +250,7 @@ impl IcedSurface for Dock {
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
-        if let Some(appi) = if self.shown { self.hovered_app } else { None } {
+        if let Some(appi) = if self.is_pointed || self.is_touched { self.hovered_app } else { None } {
             let our_center = self.center_of_app(appi);
             let toplevels = self.toplevels.borrow();
             let appid = self.apps[appi].id();
@@ -303,7 +305,7 @@ impl IcedSurface for Dock {
         // XXX: removing the icons from the output causes them to be unloaded
         //      so for now we just make the dock invisible
 
-        // if self.shown {
+        // if self.is_pointed || self.is_touched {
         let toplevels = self.toplevels.borrow();
         let row = self.apps.iter_mut().enumerate().fold(
             Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
@@ -321,9 +323,9 @@ impl IcedSurface for Dock {
                 .height(Length::Shrink)
                 .center_x()
                 .center_y()
-                .padding(if self.shown { DOCK_PADDING } else { 0 }),
+                .padding(if self.is_pointed || self.is_touched { DOCK_PADDING } else { 0 }),
         )
-        .width(if self.shown {
+        .width(if self.is_pointed || self.is_touched {
             Length::Fill
         } else {
             Length::Units(0)
@@ -369,7 +371,7 @@ impl IcedSurface for Dock {
             height: BAR_HEIGHT as _,
         };
         let mut result = vec![bar];
-        if self.shown {
+        if self.is_pointed || self.is_touched {
             let dock_width = self.width() as _;
             result.push(Rectangle {
                 x: (width - dock_width) / 2,
@@ -378,7 +380,7 @@ impl IcedSurface for Dock {
                 height: (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _,
             });
         }
-        if let Some(appi) = if self.shown { self.hovered_app } else { None } {
+        if let Some(appi) = if self.is_pointed || self.is_touched { self.hovered_app } else { None } {
             let toplevels_height = 200; // TODO: calc
             let dock_width = self.width() as i32;
             let our_center = self.center_of_app(appi) as i32;
@@ -427,11 +429,19 @@ impl IcedSurface for Dock {
     }
 
     async fn on_pointer_enter(&mut self) {
-        self.shown = true;
+        self.is_pointed = true;
     }
 
     async fn on_pointer_leave(&mut self) {
-        self.shown = false;
+        self.is_pointed = false;
         self.hovered_app = None;
+    }
+
+    async fn on_touch_enter(&mut self) {
+        self.is_touched = true;
+    }
+
+    async fn on_touch_leave(&mut self) {
+        self.is_touched = false;
     }
 }

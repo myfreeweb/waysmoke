@@ -26,6 +26,8 @@ pub trait IcedSurface {
 
     async fn on_pointer_enter(&mut self) {}
     async fn on_pointer_leave(&mut self) {}
+    async fn on_touch_enter(&mut self) {}
+    async fn on_touch_leave(&mut self) {}
 }
 
 pub struct IcedInstance<T> {
@@ -37,6 +39,8 @@ pub struct IcedInstance<T> {
     scale: i32,
     leave_timeout: Option<future::Fuse<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
     prev_input_region: Option<Vec<Rectangle<i32>>>,
+    touch_point: Option<i32>,
+    touch_leave: bool,
 
     // iced render state
     cache: Cache,
@@ -76,6 +80,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             scale: 1,
             leave_timeout: None,
             prev_input_region: None,
+            touch_point: None,
+            touch_leave: false,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             cursor_position: Point::default(),
@@ -273,9 +279,66 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 
+    async fn on_touch_event(&mut self, event: Arc<wl_touch::Event>) {
+        match &*event {
+            wl_touch::Event::Down { surface, id, x, y, .. } => {
+                if self.parent.wl_surface.detach() != *surface {
+                    return;
+                }
+                if self.touch_point.is_some() {
+                    return;
+                }
+                self.touch_point = Some(*id);
+                self.ptr_active = true;
+                self.leave_timeout = None;
+                self.cursor_position = Point::new(*x as _, *y as _);
+                self.queue
+                    .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                        x: *x as _,
+                        y: *y as _,
+                    }));
+                self.surface.on_touch_enter().await;
+            },
+            wl_touch::Event::Motion { id, x, y, .. } => {
+                if self.touch_point != Some(*id) {
+                    return;
+                }
+                self.cursor_position = Point::new(*x as _, *y as _);
+                self.queue
+                    .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                        x: *x as _,
+                        y: *y as _,
+                    }));
+            },
+            wl_touch::Event::Up { id, .. } => {
+                if self.touch_point != Some(*id) {
+                    return;
+                }
+                self.touch_point = None;
+                self.queue.push(iced_native::Event::Mouse(
+                    mouse::Event::ButtonPressed(mouse::Button::Left)
+                ));
+                self.queue.push(iced_native::Event::Mouse(
+                    mouse::Event::ButtonReleased(mouse::Button::Left)
+                ));
+                self.touch_leave = true;
+            }
+            wl_touch::Event::Frame { .. } => {
+                self.render().await;
+                if self.touch_leave {
+                    self.surface.on_touch_leave().await;
+                    self.touch_leave = false;
+                    self.render().await;
+                }
+            }
+            e => eprintln!("{:?}", e),
+        }
+    }
+
     pub async fn run(&mut self, ext_evt_src: &mut (impl Stream<Item = T::ExternalEvent> + Unpin)) {
         let seat = &self.parent.env.get_all_seats()[0];
         let mut ptr_events = wayland_event_chan(&seat.get_pointer());
+        let mut touch_events = wayland_event_chan(&seat.get_touch());
         let mut layer_events = wayland_event_chan(&self.parent.layer_surface);
 
         loop {
@@ -288,6 +351,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             futures::select! {
                 ev = layer_events.next() => if let Some(event) = ev { self.on_layer_event(event).await },
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
+                ev = touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
                 sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
                 ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
                     self.surface.react(event).await;

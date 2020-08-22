@@ -4,7 +4,7 @@ pub use smithay_client_toolkit::{
     get_surface_scale_factor,
     reexports::{
         client::{
-            protocol::{wl_compositor, wl_pointer, wl_region, wl_seat, wl_surface},
+            protocol::{wl_compositor, wl_pointer, wl_region, wl_seat, wl_surface, wl_touch},
             Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
         },
         protocols::wlr::unstable::foreign_toplevel::v1::client::{
