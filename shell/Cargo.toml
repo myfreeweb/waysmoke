@@ -7,9 +7,9 @@ edition = "2018"
 [dependencies]
 lazy_static = "1"
 futures = "0.3"
-glib = "0.9"
-gio = { version = "0.8", features = ["v2_46"] }
-linicon = "0.4"
+glib = "0"
+gio = { version = "0", features = ["v2_46"] }
+linicon = "2"
 tree_magic_mini = "1"
 wgpu = "0.5"
 

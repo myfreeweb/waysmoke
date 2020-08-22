@@ -66,6 +66,9 @@ impl App {
                 path,
                 theme: "hicolor".to_string(),
                 icon_type,
+                min_size: 0,
+                max_size: 420,
+                scale: 1,
             });
         }
         None
@@ -77,13 +80,13 @@ fn themed_icon(icon: &gio::ThemedIcon) -> Option<linicon::IconPath> {
     let names = icon.get_names();
     let name = names.iter().next()?;
     // TODO: get current scale from caller instead of assuming 2
-    icons_iter("Adwaita", name, icons::ICON_SIZE, 2)
-        .chain(icons_iter("Adwaita", name, icons::ICON_SIZE * 2, 1))
-        .chain(icons_iter("Adwaita", name, icons::ICON_SIZE, 1))
-        .chain(icons_iter("Adwaita", name, 512, 1))
-        .chain(icons_iter("Adwaita", name, 256, 1))
-        .chain(icons_iter("Adwaita", name, 128, 1))
-        .chain(icons_iter("Adwaita", name, 32, 1))
+    icons_iter(name, icons::ICON_SIZE, 2)
+        .chain(icons_iter(name, icons::ICON_SIZE * 2, 1))
+        .chain(icons_iter(name, icons::ICON_SIZE, 1))
+        .chain(icons_iter(name, 512, 1))
+        .chain(icons_iter(name, 256, 1))
+        .chain(icons_iter(name, 128, 1))
+        .chain(icons_iter(name, 32, 1))
         .next()
         .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.svg", name), SVG))
         .or_else(|| check_icon(format!("/usr/local/share/pixmaps/{}.png", name), PNG))
@@ -91,14 +94,12 @@ fn themed_icon(icon: &gio::ThemedIcon) -> Option<linicon::IconPath> {
         .or_else(|| check_icon(format!("/usr/share/pixmaps/{}.png", name), PNG))
 }
 
-fn icons_iter(
-    theme: &str,
-    name: &str,
-    size: u16,
-    scale: u16,
-) -> impl Iterator<Item = linicon::IconPath> {
-    linicon::lookup_icon_with_extra_paths(theme, name, size, scale, &PATHS[..])
+fn icons_iter(name: &str, size: u16, scale: u16) -> impl Iterator<Item = linicon::IconPath> {
+    linicon::lookup_icon(name)
+        .with_search_paths(&PATHS[..])
         .unwrap()
+        .with_size(size)
+        .with_scale(scale)
         .flat_map(|x| x)
 }
 
@@ -109,6 +110,9 @@ fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPa
             path: path.to_owned(),
             theme: "<pixmaps>".to_owned(),
             icon_type,
+            min_size: 0,
+            max_size: 420,
+            scale: 1,
         })
     } else {
         None
@@ -116,8 +120,11 @@ fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPa
 }
 
 pub fn unknown_icon() -> linicon::IconPath {
-    linicon::lookup_icon_with_extra_paths("Adwaita", "application-x-executable", 128, 1, &PATHS[..])
+    linicon::lookup_icon("application-x-executable")
+        .with_search_paths(&PATHS[..])
         .unwrap()
+        .with_size(128)
+        .with_scale(1)
         .flat_map(|x| x)
         .next()
         .unwrap()

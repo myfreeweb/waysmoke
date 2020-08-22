@@ -68,8 +68,8 @@ impl DesktopInstance {
         let layer_shell = env.require_global::<layer_shell::ZwlrLayerShellV1>();
 
         let (scale_tx, scale_rx) = mpsc::unbounded();
-        let wl_surface: Proxy<wl_surface::WlSurface> = env
-            .create_surface_with_scale_callback(|scale, wlsurf, _dd| unsafe {
+        let wl_surface: Attached<wl_surface::WlSurface> =
+            env.create_surface_with_scale_callback(|scale, wlsurf, _dd| unsafe {
                 SCALE_CHANNELS
                     .iter()
                     .find(|(surf, _)| *surf == wlsurf)
@@ -77,9 +77,7 @@ impl DesktopInstance {
                     .1
                     .unbounded_send(scale)
                     .unwrap();
-            })
-            .into();
-        let wl_surface = wl_surface.attach(queue.token());
+            });
         unsafe {
             SCALE_CHANNELS.push((wl_surface.detach(), scale_tx));
         }
