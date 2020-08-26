@@ -337,9 +337,18 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     pub async fn run(&mut self, ext_evt_src: &mut (impl Stream<Item = T::ExternalEvent> + Unpin)) {
         let seat = &self.parent.env.get_all_seats()[0];
-        let mut ptr_events = wayland_event_chan(&seat.get_pointer());
-        let mut touch_events = wayland_event_chan(&seat.get_touch());
         let mut layer_events = wayland_event_chan(&self.parent.layer_surface);
+        // TODO: react to seat caps change
+        let mut ptr_events = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
+            wayland_event_chan(&seat.get_pointer())
+        } else {
+            futures::channel::mpsc::unbounded().1
+        };
+        let mut touch_events = if with_seat_data(seat, |d| d.has_touch).unwrap() {
+            wayland_event_chan(&seat.get_touch())
+        } else {
+            futures::channel::mpsc::unbounded().1
+        };
 
         loop {
             let leave_timeout_existed = self.leave_timeout.is_some();
