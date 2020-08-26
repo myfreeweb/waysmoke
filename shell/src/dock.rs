@@ -16,6 +16,25 @@ pub const BAR_HEIGHT: u16 = 10;
 pub const DOCK_HEIGHT: u16 = icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2;
 pub const DOCK_AND_GAP_HEIGHT: u16 = DOCK_HEIGHT + DOCK_GAP;
 
+#[derive(Debug, Clone)]
+pub enum DockletMsg {
+    Hover,
+    App(app::Msg),
+}
+
+#[derive(Debug, Clone)]
+pub enum Msg {
+    IdxMsg(usize, DockletMsg),
+}
+
+pub trait Docklet {
+    fn widget(&mut self, running: bool) -> Element<DockletMsg>;
+    fn width(&self) -> u16;
+    fn overhang(&mut self, toplevels: ToplevelStates) -> Element<DockletMsg>;
+}
+
+mod app;
+
 fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
     use iced_graphics::{
         triangle::{Mesh2D, Vertex2D},
@@ -81,83 +100,17 @@ fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>)
         .into()
 }
 
-#[derive(Debug, Clone)]
-pub enum Msg {
-    ActivateApp(usize),
-    ActivateToplevel(usize, usize),
-    HoverApp(usize),
-}
-
 // #[derive(Debug, Clone)]
 // pub enum Evt {
 // }
-
-struct DockApp {
-    app: apps::App,
-    icon: icons::IconHandle,
-    button: iced_native::button::State,
-    evl: addeventlistener::State,
-}
-
-impl DockApp {
-    fn new(app: apps::App) -> DockApp {
-        let icon = app
-            .icon()
-            .map(icons::IconHandle::from_path)
-            .unwrap_or_else(|| UNKNOWN_ICON.clone());
-        DockApp {
-            app,
-            icon,
-            button: Default::default(),
-            evl: Default::default(),
-        }
-    }
-
-    fn from_id(id: &str) -> Option<DockApp> {
-        apps::App::lookup(id).map(DockApp::new)
-    }
-
-    fn id(&self) -> &str {
-        &self.app.id
-    }
-
-    fn widget(&mut self, position: usize, running: bool) -> Element<Msg> {
-        use iced_native::*;
-
-        let big_button = Button::new(&mut self.button, self.icon.clone().widget())
-            .style(style::Dock(style::DARK_COLOR))
-            .padding(APP_PADDING)
-            .on_press(Msg::ActivateApp(position));
-
-        let listener = AddEventListener::new(&mut self.evl, big_button)
-            .on_pointer_enter(Msg::HoverApp(position));
-
-        Container::new(listener)
-            .center_x()
-            .center_y()
-            .style(style::Dock(if running {
-                style::RUNNING_DARK_COLOR
-            } else {
-                style::DARK_COLOR
-            }))
-            .into()
-    }
-
-    fn width(&self) -> u16 {
-        // TODO: will be dynamic based on extras
-        icons::ICON_SIZE + APP_PADDING * 2
-    }
-}
 
 pub struct Dock {
     is_pointed: bool,
     is_touched: bool,
     seat: wl_seat::WlSeat,
     toplevels: ToplevelStates,
-    apps: Vec<DockApp>,
+    apps: Vec<app::AppDocklet>,
     hovered_app: Option<usize>,
-    toplevels_scrollable: iced_native::scrollable::State,
-    toplevels_buttons: Vec<iced_native::button::State>,
 }
 
 impl Dock {
@@ -169,8 +122,6 @@ impl Dock {
             toplevels,
             apps: Vec::new(),
             hovered_app: None,
-            toplevels_scrollable: Default::default(),
-            toplevels_buttons: Default::default(),
         }
     }
 
@@ -187,7 +138,7 @@ impl Dock {
 
         for id in docked.iter() {
             if self.apps.iter().find(|a| a.id() == *id).is_none() {
-                if let Some(app) = DockApp::from_id(id) {
+                if let Some(app) = app::AppDocklet::from_id(id) {
                     self.apps.push(app);
                 }
             }
@@ -196,10 +147,10 @@ impl Dock {
         let toplevels = self.toplevels.borrow();
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
-                if let Some(app) = DockApp::from_id(&topl.app_id).or_else(|| {
+                if let Some(app) = app::AppDocklet::from_id(&topl.app_id).or_else(|| {
                     topl.gtk_app_id
                         .as_ref()
-                        .and_then(|gid| DockApp::from_id(&gid))
+                        .and_then(|gid| app::AppDocklet::from_id(&gid))
                 }) {
                     self.apps.push(app);
                 }
@@ -255,53 +206,20 @@ impl IcedSurface for Dock {
     fn view(&mut self) -> Element<Self::Message> {
         use iced_native::*;
 
+        let apps_r = unsafe { &mut *(&mut self.apps as *mut Vec<app::AppDocklet>) }; // XXX multiple borrows
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
         if let Some(appi) = self.hovered_app() {
             let our_center = self.center_of_app(appi);
-            let toplevels = self.toplevels.borrow();
-            let appid = self.apps[appi].id();
-            while self.toplevels_buttons.len() < toplevels.values().len() {
-                self.toplevels_buttons.push(Default::default());
-            }
-            let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
-            // ugh, fold results in closure lifetime issues
-            for (i, topl) in toplevels
-                .values()
-                .filter(|topl| topl.matches_id(appid))
-                .enumerate()
-            {
-                btns = btns.push(
-                    Button::new(
-                        // and even here it complains about "multiple" borrows of self.toplevels_buttons >_<
-                        unsafe { &mut *(&mut self.toplevels_buttons[i] as *mut _) },
-                        Text::new(topl.title.clone()).size(14),
-                    )
-                    .style(style::Toplevel)
-                    .width(Length::Fill)
-                    .on_press(Msg::ActivateToplevel(appi, i)),
-                )
-            }
-            let title = Text::new(
-                self.apps[appi]
-                    .app
-                    .info
-                    .get_name()
-                    .map(|x| x.to_owned())
-                    .unwrap_or("<untitled>".to_owned()),
-            )
-            .width(Length::Fill)
-            .horizontal_alignment(HorizontalAlignment::Center)
-            .size(16);
+            let i = self.apps[appi]
+                .overhang(self.toplevels.clone())
+                .map(move |m| Msg::IdxMsg(appi, m))
+                .into();
             col = col.push(overhang(
-                Length::Units(TOPLEVELS_WIDTH),
+                Length::Units(TOPLEVELS_WIDTH), // TODO remove this arg
                 (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
-                Column::new()
-                    .push(title)
-                    .push(btns)
-                    .spacing(DOCK_PADDING)
-                    .into(),
+                i,
             ));
         } else {
             col = col.push(
@@ -315,11 +233,11 @@ impl IcedSurface for Dock {
 
         // if self.is_pointed || self.is_touched {
         let toplevels = self.toplevels.borrow();
-        let row = self.apps.iter_mut().enumerate().fold(
+        let row = apps_r.iter_mut().enumerate().fold(
             Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
             |row, (i, app)| {
                 let running = toplevels.values().any(|topl| topl.matches_id(app.id()));
-                row.push(app.widget(i, running))
+                row.push(app.widget(running).map(move |m| Msg::IdxMsg(i, m)))
             },
         );
         // TODO: show toplevels for unrecognized apps
@@ -408,31 +326,33 @@ impl IcedSurface for Dock {
 
     async fn update(&mut self, message: Self::Message) {
         match message {
-            Msg::ActivateApp(appi) => {
-                let toplevels = self.toplevels.borrow();
-                for topl in toplevels.values() {
-                    if topl.matches_id(self.apps[appi].id()) {
-                        topl.handle.activate(&self.seat);
-                        return;
+            Msg::IdxMsg(appi, DockletMsg::Hover) => self.hovered_app = Some(appi),
+            Msg::IdxMsg(appi, DockletMsg::App(amsg)) => match amsg {
+                app::Msg::ActivateApp => {
+                    let toplevels = self.toplevels.borrow();
+                    for topl in toplevels.values() {
+                        if topl.matches_id(self.apps[appi].id()) {
+                            topl.handle.activate(&self.seat);
+                            return;
+                        }
                     }
+                    self.apps[appi]
+                        .app
+                        .info
+                        .launch::<gio::AppLaunchContext>(&[], None)
+                        .unwrap()
                 }
-                self.apps[appi]
-                    .app
-                    .info
-                    .launch::<gio::AppLaunchContext>(&[], None)
-                    .unwrap()
-            }
-            Msg::ActivateToplevel(appi, topli) => {
-                let toplevels = self.toplevels.borrow();
-                toplevels
-                    .values()
-                    .filter(|topl| topl.matches_id(self.apps[appi].id()))
-                    .nth(topli)
-                    .unwrap()
-                    .handle
-                    .activate(&self.seat);
-            }
-            Msg::HoverApp(appi) => self.hovered_app = Some(appi),
+                app::Msg::ActivateToplevel(topli) => {
+                    let toplevels = self.toplevels.borrow();
+                    toplevels
+                        .values()
+                        .filter(|topl| topl.matches_id(self.apps[appi].id()))
+                        .nth(topli)
+                        .unwrap()
+                        .handle
+                        .activate(&self.seat);
+                }
+            },
         }
     }
 
