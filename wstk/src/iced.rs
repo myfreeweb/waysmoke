@@ -281,7 +281,9 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn on_touch_event(&mut self, event: Arc<wl_touch::Event>) {
         match &*event {
-            wl_touch::Event::Down { surface, id, x, y, .. } => {
+            wl_touch::Event::Down {
+                surface, id, x, y, ..
+            } => {
                 if self.parent.wl_surface.detach() != *surface {
                     return;
                 }
@@ -298,7 +300,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                         y: *y as _,
                     }));
                 self.surface.on_touch_enter().await;
-            },
+            }
             wl_touch::Event::Motion { id, x, y, .. } => {
                 if self.touch_point != Some(*id) {
                     return;
@@ -309,18 +311,20 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                         x: *x as _,
                         y: *y as _,
                     }));
-            },
+            }
             wl_touch::Event::Up { id, .. } => {
                 if self.touch_point != Some(*id) {
                     return;
                 }
                 self.touch_point = None;
-                self.queue.push(iced_native::Event::Mouse(
-                    mouse::Event::ButtonPressed(mouse::Button::Left)
-                ));
-                self.queue.push(iced_native::Event::Mouse(
-                    mouse::Event::ButtonReleased(mouse::Button::Left)
-                ));
+                self.queue
+                    .push(iced_native::Event::Mouse(mouse::Event::ButtonPressed(
+                        mouse::Button::Left,
+                    )));
+                self.queue
+                    .push(iced_native::Event::Mouse(mouse::Event::ButtonReleased(
+                        mouse::Button::Left,
+                    )));
                 self.touch_leave = true;
             }
             wl_touch::Event::Frame { .. } => {

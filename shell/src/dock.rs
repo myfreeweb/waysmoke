@@ -250,7 +250,11 @@ impl IcedSurface for Dock {
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
-        if let Some(appi) = if self.is_pointed || self.is_touched { self.hovered_app } else { None } {
+        if let Some(appi) = if self.is_pointed || self.is_touched {
+            self.hovered_app
+        } else {
+            None
+        } {
             let our_center = self.center_of_app(appi);
             let toplevels = self.toplevels.borrow();
             let appid = self.apps[appi].id();
@@ -323,7 +327,11 @@ impl IcedSurface for Dock {
                 .height(Length::Shrink)
                 .center_x()
                 .center_y()
-                .padding(if self.is_pointed || self.is_touched { DOCK_PADDING } else { 0 }),
+                .padding(if self.is_pointed || self.is_touched {
+                    DOCK_PADDING
+                } else {
+                    0
+                }),
         )
         .width(if self.is_pointed || self.is_touched {
             Length::Fill
@@ -380,7 +388,11 @@ impl IcedSurface for Dock {
                 height: (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _,
             });
         }
-        if let Some(appi) = if self.is_pointed || self.is_touched { self.hovered_app } else { None } {
+        if let Some(appi) = if self.is_pointed || self.is_touched {
+            self.hovered_app
+        } else {
+            None
+        } {
             let toplevels_height = 200; // TODO: calc
             let dock_width = self.width() as i32;
             let our_center = self.center_of_app(appi) as i32;
