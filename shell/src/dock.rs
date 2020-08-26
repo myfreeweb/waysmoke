@@ -7,7 +7,7 @@ lazy_static::lazy_static! {
         icons::IconHandle::from_path(apps::unknown_icon());
 }
 
-pub const OVERHANG_HEIGHT: u16 = 420;
+pub const OVERHANG_HEIGHT_MAX: u16 = 420;
 pub const TOPLEVELS_WIDTH: u16 = 290;
 pub const APP_PADDING: u16 = 4;
 pub const DOCK_PADDING: u16 = 4;
@@ -95,7 +95,7 @@ fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>)
     }
     Container::new(offset_row)
         .width(Length::Fill)
-        .height(Length::Units(OVERHANG_HEIGHT))
+        .height(Length::Units(OVERHANG_HEIGHT_MAX))
         .center_x()
         .align_y(Align::End)
         .into()
@@ -111,7 +111,7 @@ pub struct Dock {
     seat: wl_seat::WlSeat,
     toplevels: ToplevelStates,
     apps: Vec<app::AppDocklet>,
-    hovered_app: Option<usize>,
+    hovered_docklet: Option<usize>,
 }
 
 impl Dock {
@@ -122,12 +122,12 @@ impl Dock {
             seat,
             toplevels,
             apps: Vec::new(),
-            hovered_app: None,
+            hovered_docklet: None,
         }
     }
 
     fn update_apps(&mut self) {
-        self.hovered_app = None;
+        self.hovered_docklet = None;
 
         let docked = vec![
             "firefox",
@@ -170,7 +170,7 @@ impl Dock {
             + DOCK_PADDING * 2
     }
 
-    fn center_of_app(&self, id: usize) -> u16 {
+    fn center_of_docklet(&self, id: usize) -> u16 {
         DOCK_PADDING
             + self.apps[..id]
                 .iter()
@@ -178,9 +178,9 @@ impl Dock {
             + self.apps[id].width() / 2
     }
 
-    fn hovered_app(&self) -> Option<usize> {
+    fn hovered_docklet(&self) -> Option<usize> {
         if self.is_pointed || self.is_touched {
-            self.hovered_app
+            self.hovered_docklet
         } else {
             None
         }
@@ -194,7 +194,10 @@ impl DesktopSurface for Dock {
                 | layer_surface::Anchor::Right
                 | layer_surface::Anchor::Bottom,
         );
-        layer_surface.set_size(0, (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT) as _);
+        layer_surface.set_size(
+            0,
+            (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT_MAX) as _,
+        );
         layer_surface.set_exclusive_zone(BAR_HEIGHT as _);
     }
 }
@@ -211,8 +214,8 @@ impl IcedSurface for Dock {
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
-        if let Some(appi) = self.hovered_app() {
-            let our_center = self.center_of_app(appi);
+        if let Some(appi) = self.hovered_docklet() {
+            let our_center = self.center_of_docklet(appi);
             let i = self.apps[appi]
                 .overhang(self.toplevels.clone())
                 .map(move |m| Msg::IdxMsg(appi, m))
@@ -225,7 +228,7 @@ impl IcedSurface for Dock {
         } else {
             col = col.push(
                 prim::Prim::new(iced_graphics::Primitive::None)
-                    .height(Length::Units(OVERHANG_HEIGHT)),
+                    .height(Length::Units(OVERHANG_HEIGHT_MAX)),
             );
         }
 
@@ -297,7 +300,7 @@ impl IcedSurface for Dock {
     fn input_region(&self, width: i32, _height: i32) -> Option<Vec<Rectangle<i32>>> {
         let bar = Rectangle {
             x: 0,
-            y: (DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT) as _,
+            y: (DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT_MAX) as _,
             width,
             height: BAR_HEIGHT as _,
         };
@@ -306,20 +309,20 @@ impl IcedSurface for Dock {
             let dock_width = self.width() as _;
             result.push(Rectangle {
                 x: (width - dock_width) / 2,
-                y: OVERHANG_HEIGHT as _,
+                y: OVERHANG_HEIGHT_MAX as _,
                 width: dock_width,
                 height: (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _,
             });
         }
-        if let Some(appi) = self.hovered_app() {
-            let toplevels_height = 200; // TODO: calc
+        if let Some(i) = self.hovered_docklet() {
+            let overhang_height = 200; // TODO: calc
             let dock_width = self.width() as i32;
-            let our_center = self.center_of_app(appi) as i32;
+            let our_center = self.center_of_docklet(i) as i32;
             result.push(Rectangle {
                 x: (width - TOPLEVELS_WIDTH as i32) / 2 - (dock_width / 2 - our_center),
-                y: (OVERHANG_HEIGHT - toplevels_height) as _,
+                y: (OVERHANG_HEIGHT_MAX - overhang_height) as _,
                 width: TOPLEVELS_WIDTH as _,
-                height: toplevels_height as _,
+                height: overhang_height as _,
             });
         }
         Some(result)
@@ -327,7 +330,7 @@ impl IcedSurface for Dock {
 
     async fn update(&mut self, message: Self::Message) {
         match message {
-            Msg::IdxMsg(appi, DockletMsg::Hover) => self.hovered_app = Some(appi),
+            Msg::IdxMsg(i, DockletMsg::Hover) => self.hovered_docklet = Some(i),
             Msg::IdxMsg(i, DockletMsg::App(amsg)) => {
                 self.apps[i].update(self.toplevels.clone(), &self.seat, amsg)
             }
@@ -344,7 +347,7 @@ impl IcedSurface for Dock {
 
     async fn on_pointer_leave(&mut self) {
         self.is_pointed = false;
-        self.hovered_app = None;
+        self.hovered_docklet = None;
     }
 
     async fn on_touch_enter(&mut self) {
