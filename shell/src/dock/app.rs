@@ -68,10 +68,10 @@ impl Docklet for AppDocklet {
         icons::ICON_SIZE + APP_PADDING * 2
     }
 
-    fn overhang(&mut self, toplevels: ToplevelStates) -> Element<DockletMsg> {
+    fn overhang(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let toplevels = toplevels.borrow();
+        let toplevels = ctx.toplevels.borrow();
         let appid = &self.app.id;
         while self.toplevels_buttons.len() < toplevels.values().len() {
             self.toplevels_buttons.push(Default::default());
@@ -112,14 +112,14 @@ impl Docklet for AppDocklet {
             .into()
     }
 
-    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: DockletMsg) {
-        let toplevels = toplevels.borrow();
+    fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {
+        let toplevels = ctx.toplevels.borrow();
 
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
                 for topl in toplevels.values() {
                     if topl.matches_id(self.id()) {
-                        topl.handle.activate(seat);
+                        topl.handle.activate(&ctx.seat);
                         return;
                     }
                 }
@@ -135,9 +135,9 @@ impl Docklet for AppDocklet {
                     .nth(topli)
                     .unwrap()
                     .handle
-                    .activate(seat);
+                    .activate(&ctx.seat);
             }
-            _ => ()
+            _ => (),
         }
     }
 }

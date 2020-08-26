@@ -30,8 +30,8 @@ pub enum Msg {
 pub trait Docklet {
     fn widget(&mut self, running: bool) -> Element<DockletMsg>;
     fn width(&self) -> u16;
-    fn overhang(&mut self, toplevels: ToplevelStates) -> Element<DockletMsg>;
-    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: DockletMsg);
+    fn overhang(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
+    fn update(&mut self, ctx: &DockCtx, msg: DockletMsg);
 }
 
 mod app;
@@ -105,22 +105,26 @@ fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>)
 // pub enum Evt {
 // }
 
+#[derive(Clone)]
+pub struct DockCtx {
+    pub seat: wl_seat::WlSeat,
+    pub toplevels: ToplevelStates,
+}
+
 pub struct Dock {
+    ctx: DockCtx,
     is_pointed: bool,
     is_touched: bool,
-    seat: wl_seat::WlSeat,
-    toplevels: ToplevelStates,
     apps: Vec<app::AppDocklet>,
     hovered_docklet: Option<usize>,
 }
 
 impl Dock {
-    pub fn new(seat: wl_seat::WlSeat, toplevels: ToplevelStates) -> Dock {
+    pub fn new(ctx: DockCtx) -> Dock {
         Dock {
+            ctx,
             is_pointed: false,
             is_touched: false,
-            seat,
-            toplevels,
             apps: Vec::new(),
             hovered_docklet: None,
         }
@@ -145,7 +149,7 @@ impl Dock {
             }
         }
 
-        let toplevels = self.toplevels.borrow();
+        let toplevels = self.ctx.toplevels.borrow();
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
                 if let Some(app) = app::AppDocklet::from_id(&topl.app_id).or_else(|| {
@@ -217,7 +221,7 @@ impl IcedSurface for Dock {
         if let Some(appi) = self.hovered_docklet() {
             let our_center = self.center_of_docklet(appi);
             let i = self.apps[appi]
-                .overhang(self.toplevels.clone())
+                .overhang(&self.ctx)
                 .map(move |m| Msg::IdxMsg(appi, m))
                 .into();
             col = col.push(overhang(
@@ -236,7 +240,7 @@ impl IcedSurface for Dock {
         //      so for now we just make the dock invisible
 
         // if self.is_pointed || self.is_touched {
-        let toplevels = self.toplevels.borrow();
+        let toplevels = self.ctx.toplevels.borrow();
         let row = apps_r.iter_mut().enumerate().fold(
             Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
             |row, (i, app)| {
@@ -331,9 +335,7 @@ impl IcedSurface for Dock {
     async fn update(&mut self, message: Self::Message) {
         match message {
             Msg::IdxMsg(i, DockletMsg::Hover) => self.hovered_docklet = Some(i),
-            Msg::IdxMsg(i, dmsg) => {
-                self.apps[i].update(self.toplevels.clone(), &self.seat, dmsg)
-            }
+            Msg::IdxMsg(i, dmsg) => self.apps[i].update(&self.ctx, dmsg),
         }
     }
 

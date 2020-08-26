@@ -25,7 +25,7 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
 
     let seat = env.get_all_seats()[0].detach();
     let mut dock = IcedInstance::new(
-        dock::Dock::new(seat, toplevels),
+        dock::Dock::new(dock::DockCtx { seat, toplevels }),
         env.clone(),
         display.clone(),
         queue,
