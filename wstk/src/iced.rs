@@ -228,47 +228,51 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     async fn on_pointer_event(&mut self, event: Arc<wl_pointer::Event>) {
         match &*event {
             wl_pointer::Event::Enter { surface, .. } => {
-                if self.parent.wl_surface.detach() == *surface {
-                    self.ptr_active = true;
-                    self.leave_timeout = None;
-                    self.surface.on_pointer_enter().await;
+                if self.parent.wl_surface.detach() != *surface {
+                    return;
                 }
+                self.ptr_active = true;
+                self.leave_timeout = None;
+                self.surface.on_pointer_enter().await;
             }
             wl_pointer::Event::Leave { surface, .. } => {
-                if self.parent.wl_surface.detach() == *surface {
-                    self.ptr_active = false;
-                    self.leave_timeout = Some(glib::timeout_future(200).fuse());
+                if self.parent.wl_surface.detach() != *surface {
+                    return;
                 }
+                self.ptr_active = false;
+                self.leave_timeout = Some(glib::timeout_future(200).fuse());
             }
             wl_pointer::Event::Button { button, state, .. } => {
-                if self.ptr_active {
-                    let btn = match *button {
-                        0x110 => mouse::Button::Left,
-                        0x111 => mouse::Button::Right,
-                        0x112 => mouse::Button::Middle,
-                        x if x > 0x110 => mouse::Button::Other((x - 0x110) as u8),
-                        _ => panic!("low button event code"),
-                    };
-                    self.queue.push(iced_native::Event::Mouse(match state {
-                        wl_pointer::ButtonState::Pressed => mouse::Event::ButtonPressed(btn),
-                        wl_pointer::ButtonState::Released => mouse::Event::ButtonReleased(btn),
-                        _ => panic!("new button state?"),
-                    }));
+                if !self.ptr_active {
+                    return;
                 }
+                let btn = match *button {
+                    0x110 => mouse::Button::Left,
+                    0x111 => mouse::Button::Right,
+                    0x112 => mouse::Button::Middle,
+                    x if x > 0x110 => mouse::Button::Other((x - 0x110) as u8),
+                    _ => panic!("low button event code"),
+                };
+                self.queue.push(iced_native::Event::Mouse(match state {
+                    wl_pointer::ButtonState::Pressed => mouse::Event::ButtonPressed(btn),
+                    wl_pointer::ButtonState::Released => mouse::Event::ButtonReleased(btn),
+                    _ => panic!("new button state?"),
+                }));
             }
             wl_pointer::Event::Motion {
                 surface_x,
                 surface_y,
                 ..
             } => {
-                if self.ptr_active {
-                    self.cursor_position = Point::new(*surface_x as _, *surface_y as _);
-                    self.queue
-                        .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                            x: *surface_x as _,
-                            y: *surface_y as _,
-                        }));
+                if !self.ptr_active {
+                    return;
                 }
+                self.cursor_position = Point::new(*surface_x as _, *surface_y as _);
+                self.queue
+                    .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                        x: *surface_x as _,
+                        y: *surface_y as _,
+                    }));
             }
             wl_pointer::Event::Frame { .. } => {
                 self.render().await;
