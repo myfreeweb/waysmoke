@@ -111,4 +111,32 @@ impl Docklet for AppDocklet {
             .spacing(DOCK_PADDING)
             .into()
     }
+
+    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: Msg) {
+        let toplevels = toplevels.borrow();
+
+        match msg {
+            Msg::ActivateApp => {
+                for topl in toplevels.values() {
+                    if topl.matches_id(self.id()) {
+                        topl.handle.activate(seat);
+                        return;
+                    }
+                }
+                self.app
+                    .info
+                    .launch::<gio::AppLaunchContext>(&[], None)
+                    .unwrap()
+            }
+            Msg::ActivateToplevel(topli) => {
+                toplevels
+                    .values()
+                    .filter(|topl| topl.matches_id(self.id()))
+                    .nth(topli)
+                    .unwrap()
+                    .handle
+                    .activate(seat);
+            }
+        }
+    }
 }

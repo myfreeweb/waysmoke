@@ -31,6 +31,7 @@ pub trait Docklet {
     fn widget(&mut self, running: bool) -> Element<DockletMsg>;
     fn width(&self) -> u16;
     fn overhang(&mut self, toplevels: ToplevelStates) -> Element<DockletMsg>;
+    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: app::Msg);
 }
 
 mod app;
@@ -327,32 +328,9 @@ impl IcedSurface for Dock {
     async fn update(&mut self, message: Self::Message) {
         match message {
             Msg::IdxMsg(appi, DockletMsg::Hover) => self.hovered_app = Some(appi),
-            Msg::IdxMsg(appi, DockletMsg::App(amsg)) => match amsg {
-                app::Msg::ActivateApp => {
-                    let toplevels = self.toplevels.borrow();
-                    for topl in toplevels.values() {
-                        if topl.matches_id(self.apps[appi].id()) {
-                            topl.handle.activate(&self.seat);
-                            return;
-                        }
-                    }
-                    self.apps[appi]
-                        .app
-                        .info
-                        .launch::<gio::AppLaunchContext>(&[], None)
-                        .unwrap()
-                }
-                app::Msg::ActivateToplevel(topli) => {
-                    let toplevels = self.toplevels.borrow();
-                    toplevels
-                        .values()
-                        .filter(|topl| topl.matches_id(self.apps[appi].id()))
-                        .nth(topli)
-                        .unwrap()
-                        .handle
-                        .activate(&self.seat);
-                }
-            },
+            Msg::IdxMsg(i, DockletMsg::App(amsg)) => {
+                self.apps[i].update(self.toplevels.clone(), &self.seat, amsg)
+            }
         }
     }
 
