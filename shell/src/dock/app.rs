@@ -112,11 +112,11 @@ impl Docklet for AppDocklet {
             .into()
     }
 
-    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: Msg) {
+    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: DockletMsg) {
         let toplevels = toplevels.borrow();
 
         match msg {
-            Msg::ActivateApp => {
+            DockletMsg::App(Msg::ActivateApp) => {
                 for topl in toplevels.values() {
                     if topl.matches_id(self.id()) {
                         topl.handle.activate(seat);
@@ -128,7 +128,7 @@ impl Docklet for AppDocklet {
                     .launch::<gio::AppLaunchContext>(&[], None)
                     .unwrap()
             }
-            Msg::ActivateToplevel(topli) => {
+            DockletMsg::App(Msg::ActivateToplevel(topli)) => {
                 toplevels
                     .values()
                     .filter(|topl| topl.matches_id(self.id()))
@@ -137,6 +137,7 @@ impl Docklet for AppDocklet {
                     .handle
                     .activate(seat);
             }
+            _ => ()
         }
     }
 }

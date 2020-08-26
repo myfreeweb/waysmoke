@@ -31,7 +31,7 @@ pub trait Docklet {
     fn widget(&mut self, running: bool) -> Element<DockletMsg>;
     fn width(&self) -> u16;
     fn overhang(&mut self, toplevels: ToplevelStates) -> Element<DockletMsg>;
-    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: app::Msg);
+    fn update(&mut self, toplevels: ToplevelStates, seat: &wl_seat::WlSeat, msg: DockletMsg);
 }
 
 mod app;
@@ -331,8 +331,8 @@ impl IcedSurface for Dock {
     async fn update(&mut self, message: Self::Message) {
         match message {
             Msg::IdxMsg(i, DockletMsg::Hover) => self.hovered_docklet = Some(i),
-            Msg::IdxMsg(i, DockletMsg::App(amsg)) => {
-                self.apps[i].update(self.toplevels.clone(), &self.seat, amsg)
+            Msg::IdxMsg(i, dmsg) => {
+                self.apps[i].update(self.toplevels.clone(), &self.seat, dmsg)
             }
         }
     }
