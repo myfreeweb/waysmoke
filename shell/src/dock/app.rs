@@ -41,8 +41,11 @@ impl AppDocklet {
 }
 
 impl Docklet for AppDocklet {
-    fn widget(&mut self, running: bool) -> Element<DockletMsg> {
+    fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
+
+        let toplevels = ctx.toplevels.borrow();
+        let running = toplevels.values().any(|topl| topl.matches_id(self.id()));
 
         let big_button = Button::new(&mut self.button, self.icon.clone().widget())
             .style(style::Dock(style::DARK_COLOR))

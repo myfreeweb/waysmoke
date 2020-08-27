@@ -28,7 +28,7 @@ pub enum Msg {
 }
 
 pub trait Docklet {
-    fn widget(&mut self, running: bool) -> Element<DockletMsg>;
+    fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
     fn width(&self) -> u16;
     fn overhang(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg);
@@ -241,12 +241,10 @@ impl IcedSurface for Dock {
 
         // if self.is_pointed || self.is_touched {
         let toplevels = self.ctx.toplevels.borrow();
+        let cr = &self.ctx; // argh borrowck
         let row = apps_r.iter_mut().enumerate().fold(
             Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
-            |row, (i, app)| {
-                let running = toplevels.values().any(|topl| topl.matches_id(app.id()));
-                row.push(app.widget(running).map(move |m| Msg::IdxMsg(i, m)))
-            },
+            |row, (i, app)| row.push(app.widget(cr).map(move |m| Msg::IdxMsg(i, m))),
         );
         // TODO: show toplevels for unrecognized apps
 
