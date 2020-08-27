@@ -36,7 +36,7 @@ pub trait Docklet {
 
 mod app;
 
-fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
+fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
     use iced_graphics::{
         triangle::{Mesh2D, Vertex2D},
         Primitive,
@@ -45,7 +45,7 @@ fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>)
 
     let content_box = Container::new(content)
         .style(style::Dock(style::DARK_COLOR))
-        .width(Length::Fill)
+        .width(Length::Shrink)
         .padding(DOCK_PADDING);
 
     let triangle = prim::Prim::new(Primitive::Mesh2D {
@@ -73,7 +73,7 @@ fn overhang(width: iced_native::Length, icon_offset: i16, content: Element<Msg>)
 
     let content_col = Column::new()
         .align_items(Align::Center)
-        .width(width)
+        .width(Length::Shrink)
         .push(content_box)
         .push(triangle);
 
@@ -225,7 +225,6 @@ impl IcedSurface for Dock {
                 .map(move |m| Msg::IdxMsg(appi, m))
                 .into();
             col = col.push(overhang(
-                Length::Units(TOPLEVELS_WIDTH), // TODO remove this arg
                 (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
                 i,
             ));
