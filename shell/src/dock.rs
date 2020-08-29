@@ -168,18 +168,27 @@ impl Dock {
         });
     }
 
+    fn docklets_count(&self) -> u16 {
+        self.apps.len() as u16
+    }
+
+    fn docklets(&self) -> impl Iterator<Item = &dyn Docklet> {
+        self.apps.iter().map(|x| &*x as &dyn Docklet)
+    }
+
     fn width(&self) -> u16 {
-        self.apps.iter().fold(0, |w, app| w + app.width())
-            + DOCK_PADDING * (std::cmp::max(self.apps.len() as u16, 1) - 1)
+        self.docklets().fold(0, |w, d| w + d.width())
+            + DOCK_PADDING * (std::cmp::max(self.docklets_count() as u16, 1) - 1)
             + DOCK_PADDING * 2
     }
 
     fn center_of_docklet(&self, id: usize) -> u16 {
         DOCK_PADDING
-            + self.apps[..id]
-                .iter()
-                .fold(0, |acc, app| acc + app.width() + DOCK_PADDING)
-            + self.apps[id].width() / 2
+            + self
+                .docklets()
+                .take(id)
+                .fold(0, |x, d| x + d.width() + DOCK_PADDING)
+            + self.docklets().nth(id).unwrap().width() / 2
     }
 
     fn hovered_docklet(&self) -> Option<usize> {
@@ -214,13 +223,13 @@ impl IcedSurface for Dock {
     fn view(&mut self) -> Element<Self::Message> {
         use iced_native::*;
 
-        let apps_r = unsafe { &mut *(&mut self.apps as *mut Vec<app::AppDocklet>) }; // XXX multiple borrows
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
         if let Some(appi) = self.hovered_docklet() {
             let our_center = self.center_of_docklet(appi);
-            let i = self.apps[appi]
+            let docklet = self.docklets().nth(appi).unwrap();
+            let i = unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
                 .overhang(&self.ctx)
                 .map(move |m| Msg::IdxMsg(appi, m))
                 .into();
@@ -239,11 +248,15 @@ impl IcedSurface for Dock {
         //      so for now we just make the dock invisible
 
         // if self.is_pointed || self.is_touched {
-        let toplevels = self.ctx.toplevels.borrow();
-        let cr = &self.ctx; // argh borrowck
-        let row = apps_r.iter_mut().enumerate().fold(
+        let row = self.docklets().enumerate().fold(
             Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
-            |row, (i, app)| row.push(app.widget(cr).map(move |m| Msg::IdxMsg(i, m))),
+            |row, (i, docklet)| {
+                row.push(
+                    unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
+                        .widget(&self.ctx)
+                        .map(move |m| Msg::IdxMsg(i, m)),
+                )
+            },
         );
         // TODO: show toplevels for unrecognized apps
 
@@ -332,7 +345,11 @@ impl IcedSurface for Dock {
     async fn update(&mut self, message: Self::Message) {
         match message {
             Msg::IdxMsg(i, DockletMsg::Hover) => self.hovered_docklet = Some(i),
-            Msg::IdxMsg(i, dmsg) => self.apps[i].update(&self.ctx, dmsg),
+            Msg::IdxMsg(i, dmsg) => {
+                let docklet = self.docklets().nth(i).unwrap();
+                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
+                    .update(&self.ctx, dmsg)
+            }
         }
     }
 
