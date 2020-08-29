@@ -168,18 +168,15 @@ impl Dock {
         });
     }
 
-    fn docklets_count(&self) -> u16 {
-        self.apps.len() as u16
-    }
-
     fn docklets(&self) -> impl Iterator<Item = &dyn Docklet> {
         self.apps.iter().map(|x| &*x as &dyn Docklet)
     }
 
     fn width(&self) -> u16 {
-        self.docklets().fold(0, |w, d| w + d.width())
-            + DOCK_PADDING * (std::cmp::max(self.docklets_count() as u16, 1) - 1)
-            + DOCK_PADDING * 2
+        let (wid, cnt) = self
+            .docklets()
+            .fold((0, 0), |(w, c), d| (w + d.width(), c + 1));
+        wid + DOCK_PADDING * (std::cmp::max(cnt as u16, 1) - 1) + DOCK_PADDING * 2
     }
 
     fn center_of_docklet(&self, id: usize) -> u16 {
