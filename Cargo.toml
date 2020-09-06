@@ -21,8 +21,11 @@ panic = "abort"
 # wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
 # wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
 
-# gio  = { git = "https://github.com/gtk-rs/gio" }
-# glib = { git = "https://github.com/gtk-rs/glib" } # version required by gio
+gio  = { git = "https://github.com/gtk-rs/gio" }
+gio-sys = { git = "https://github.com/gtk-rs/sys" }
+glib = { git = "https://github.com/gtk-rs/glib" }
+glib-sys = { git = "https://github.com/gtk-rs/sys" }
+gobject-sys = { git = "https://github.com/gtk-rs/sys" }
 
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
 wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }

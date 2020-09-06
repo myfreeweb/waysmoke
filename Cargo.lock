@@ -851,9 +851,8 @@ dependencies = [
 
 [[package]]
 name = "gio"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fb60242bfff700772dae5d9e3a1f7aa2e4ebccf18b89662a16acb2822568561"
+version = "0.9.0"
+source = "git+https://github.com/gtk-rs/gio#c7e6b523a77fab10ab6f1e0f63253c7e5e1cecc4"
 dependencies = [
  "bitflags",
  "futures",
@@ -873,8 +872,7 @@ dependencies = [
 [[package]]
 name = "gio-sys"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35993626299fbcaa73c0a19be8fdd01c950f9f3d3ac9cb4fb5532b924ab1a5d7"
+source = "git+https://github.com/gtk-rs/sys#56e03c021c393e1cf3f148005b348ac5a8a0ab72"
 dependencies = [
  "glib-sys",
  "gobject-sys",
@@ -890,9 +888,8 @@ checksum = "b2273fdae3729e928d8f4f29aee7e9931d196ce0a565030b96d7e0cc4c02f01f"
 
 [[package]]
 name = "glib"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e0533f48640d86e8e2f3cee778a9f97588d4a0bec8be065ee51ea52346d6c1"
+version = "0.10.0"
+source = "git+https://github.com/gtk-rs/glib#2431931b523f7a0570fb69ba525a1bd9e5d2780f"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -909,9 +906,8 @@ dependencies = [
 
 [[package]]
 name = "glib-macros"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41486a26d1366a8032b160b59065a59fb528530a46a49f627e7048fb8c064039"
+version = "0.10.0"
+source = "git+https://github.com/gtk-rs/glib#2431931b523f7a0570fb69ba525a1bd9e5d2780f"
 dependencies = [
  "anyhow",
  "heck",
@@ -926,8 +922,7 @@ dependencies = [
 [[package]]
 name = "glib-sys"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6cda4af5c2f4507b7a3535b798dca2135293f4bc3a17f399ce244ef15841c4c"
+source = "git+https://github.com/gtk-rs/sys#56e03c021c393e1cf3f148005b348ac5a8a0ab72"
 dependencies = [
  "libc",
  "system-deps",
@@ -975,8 +970,7 @@ dependencies = [
 [[package]]
 name = "gobject-sys"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "952133b60c318a62bf82ee75b93acc7e84028a093e06b9e27981c2b6fe68218c"
+source = "git+https://github.com/gtk-rs/sys#56e03c021c393e1cf3f148005b348ac5a8a0ab72"
 dependencies = [
  "glib-sys",
  "libc",

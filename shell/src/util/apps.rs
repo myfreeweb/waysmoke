@@ -1,4 +1,5 @@
 use crate::util::icons;
+use gio::prelude::*;
 use std::path::Path;
 
 lazy_static::lazy_static! {
@@ -42,8 +43,6 @@ impl App {
     }
 
     pub fn icon(&self) -> Option<linicon::IconPath> {
-        use gio::{AppInfoExt, FileExt};
-        use glib::object::Cast;
         let icon = self.info.get_icon()?;
         if let Some(ticon) = icon.downcast_ref::<gio::ThemedIcon>() {
             return themed_icon(ticon);
