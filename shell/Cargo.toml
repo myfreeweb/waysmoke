@@ -11,6 +11,6 @@ glib = "0"
 gio = { version = "0", features = ["v2_46"] }
 linicon = "2"
 tree_magic_mini = "1"
-wgpu = "0.5"
+wgpu = "0.6"
 
 wstk = { path = "../wstk" }

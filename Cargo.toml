@@ -4,6 +4,9 @@ members = [
 	"shell",
 ]
 
+[profile.dev]
+panic = "abort"
+
 [profile.release]
 lto = "thin"
 opt-level = "s"
@@ -22,5 +25,5 @@ panic = "abort"
 # glib = { git = "https://github.com/gtk-rs/glib" } # version required by gio
 
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
-wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.5-alpha" }
-wgpu-types = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.5-alpha" }
+wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
+wgpu-types = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }

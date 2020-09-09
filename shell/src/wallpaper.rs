@@ -11,7 +11,6 @@ pub struct Wallpaper {
     surface: wgpu::Surface,
     queue: wgpu::Queue,
     render_pipeline: wgpu::RenderPipeline,
-    bind_group: wgpu::BindGroup,
     swap_chain: Option<wgpu::SwapChain>,
 }
 
@@ -33,49 +32,41 @@ impl Wallpaper {
     pub async fn new(env: Environment<Env>, display: Display, queue: &EventQueue) -> Self {
         let parent = DesktopInstance::new(&WallpaperSetup, env, display, queue);
 
-        let surface = wgpu::Surface::create(&parent.raw_handle());
-        let adapter = wgpu::Adapter::request(
-            &wgpu::RequestAdapterOptions {
+        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let surface = unsafe { instance.create_surface(&parent.raw_handle()) };
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::Default,
                 compatible_surface: Some(&surface),
-            },
-            wgpu::BackendBit::PRIMARY,
-        )
-        .await
-        .unwrap();
+            })
+            .await
+            .unwrap();
 
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                extensions: wgpu::Extensions {
-                    anisotropic_filtering: false,
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::empty(),
+                    limits: wgpu::Limits::default(),
+                    shader_validation: false,
                 },
-                limits: wgpu::Limits::default(),
-            })
-            .await;
+                None,
+            )
+            .await
+            .unwrap();
 
-        let vs = include_bytes!("quad.spv");
-        let vs_module =
-            device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&vs[..])).unwrap());
+        let vs_module = device.create_shader_module(wgpu::include_spirv!("quad.spv"));
 
-        let fs = include_bytes!("dummy_wp.spv");
-        let fs_module =
-            device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&fs[..])).unwrap());
+        let fs_module = device.create_shader_module(wgpu::include_spirv!("dummy_wp.spv"));
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[],
-            label: None,
-        });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[],
-            label: None,
-        });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[&bind_group_layout],
+            label: None,
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            layout: &pipeline_layout,
+            label: None,
+            layout: Some(&pipeline_layout),
             vertex_stage: wgpu::ProgrammableStageDescriptor {
                 module: &vs_module,
                 entry_point: "main",
@@ -84,13 +75,7 @@ impl Wallpaper {
                 module: &fs_module,
                 entry_point: "main",
             }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::Back,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
+            rasterization_state: None, // default
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
@@ -120,7 +105,6 @@ impl Wallpaper {
             surface,
             queue,
             render_pipeline,
-            bind_group,
             swap_chain: None,
         }
     }
@@ -145,8 +129,9 @@ impl Wallpaper {
             .swap_chain
             .as_mut()
             .unwrap()
-            .get_next_texture()
-            .expect("Timeout when acquiring next swap chain texture");
+            .get_current_frame()
+            .expect("Timeout when acquiring next swap chain texture")
+            .output;
 
         let mut encoder = self
             .device
@@ -157,18 +142,18 @@ impl Wallpaper {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
                     resolve_target: None,
-                    load_op: wgpu::LoadOp::Clear,
-                    store_op: wgpu::StoreOp::Store,
-                    clear_color: wgpu::Color::BLACK,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: true,
+                    },
                 }],
                 depth_stencil_attachment: None,
             });
             rpass.set_pipeline(&self.render_pipeline);
-            rpass.set_bind_group(0, &self.bind_group, &[]);
             rpass.draw(0..3, 0..1);
         }
 
-        self.queue.submit(&[encoder.finish()]);
+        self.queue.submit(Some(encoder.finish()));
     }
 
     async fn on_scale(&mut self, scale: i32) {
