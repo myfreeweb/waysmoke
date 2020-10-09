@@ -71,7 +71,7 @@ impl Docklet for AppDocklet {
         icons::ICON_SIZE + APP_PADDING * 2
     }
 
-    fn overhang(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
+    fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
         let toplevels = ctx.toplevels.borrow();
@@ -107,12 +107,14 @@ impl Docklet for AppDocklet {
         .width(Length::Fill)
         .horizontal_alignment(HorizontalAlignment::Center)
         .size(16);
-        Column::new()
-            .width(Length::Units(TOPLEVELS_WIDTH))
-            .push(title)
-            .push(btns)
-            .spacing(DOCK_PADDING)
-            .into()
+        Some(
+            Column::new()
+                .width(Length::Units(TOPLEVELS_WIDTH))
+                .push(title)
+                .push(btns)
+                .spacing(DOCK_PADDING)
+                .into(),
+        )
     }
 
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {

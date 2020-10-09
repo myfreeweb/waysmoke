@@ -118,8 +118,8 @@ fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPa
     }
 }
 
-pub fn unknown_icon() -> linicon::IconPath {
-    linicon::lookup_icon("application-x-executable")
+pub fn icon(name: &str) -> linicon::IconPath {
+    linicon::lookup_icon(name)
         .with_search_paths(&PATHS[..])
         .unwrap()
         .with_size(128)

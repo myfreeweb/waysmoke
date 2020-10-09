@@ -1,10 +1,10 @@
-use crate::{style, util::*};
+use crate::{style, svc, util::*};
 use gio::{AppInfoExt, DesktopAppInfoExt};
 use wstk::*;
 
 lazy_static::lazy_static! {
     static ref UNKNOWN_ICON: icons::IconHandle =
-        icons::IconHandle::from_path(apps::unknown_icon());
+        icons::IconHandle::from_path(apps::icon("application-x-executable"));
 }
 
 pub const OVERHANG_HEIGHT_MAX: u16 = 420;
@@ -30,11 +30,14 @@ pub enum Msg {
 pub trait Docklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
     fn width(&self) -> u16;
-    fn overhang(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
+    fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {
+        None
+    }
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg);
 }
 
 mod app;
+mod power;
 
 fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
     use iced_graphics::{
@@ -101,32 +104,39 @@ fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
         .into()
 }
 
-// #[derive(Debug, Clone)]
-// pub enum Evt {
-// }
+#[derive(Debug, Clone)]
+pub enum Evt {
+    ToplevelsChanged,
+    PowerChanged(svc::power::PowerState),
+}
 
 #[derive(Clone)]
 pub struct DockCtx {
     pub seat: wl_seat::WlSeat,
     pub toplevels: ToplevelStates,
+    pub power: svc::power::PowerService,
 }
 
 pub struct Dock {
     ctx: DockCtx,
     is_pointed: bool,
     is_touched: bool,
-    apps: Vec<app::AppDocklet>,
     hovered_docklet: Option<usize>,
+
+    apps: Vec<app::AppDocklet>,
+    power: power::PowerDocklet,
 }
 
 impl Dock {
     pub fn new(ctx: DockCtx) -> Dock {
+        let pst = ctx.power.state().clone();
         Dock {
             ctx,
             is_pointed: false,
             is_touched: false,
-            apps: Vec::new(),
             hovered_docklet: None,
+            apps: Vec::new(),
+            power: power::PowerDocklet::new(pst),
         }
     }
 
@@ -169,7 +179,10 @@ impl Dock {
     }
 
     fn docklets(&self) -> impl Iterator<Item = &dyn Docklet> {
-        self.apps.iter().map(|x| &*x as &dyn Docklet)
+        self.apps
+            .iter()
+            .map(|x| &*x as &dyn Docklet)
+            .chain(std::iter::once(&self.power as &dyn Docklet))
     }
 
     fn width(&self) -> u16 {
@@ -215,7 +228,7 @@ impl DesktopSurface for Dock {
 #[async_trait(?Send)]
 impl IcedSurface for Dock {
     type Message = Msg;
-    type ExternalEvent = ();
+    type ExternalEvent = Evt;
 
     fn view(&mut self) -> Element<Self::Message> {
         use iced_native::*;
@@ -223,18 +236,22 @@ impl IcedSurface for Dock {
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
+        let mut has_oh = false;
         if let Some(appi) = self.hovered_docklet() {
             let our_center = self.center_of_docklet(appi);
             let docklet = self.docklets().nth(appi).unwrap();
-            let i = unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
+            if let Some(oh) = unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
                 .overhang(&self.ctx)
-                .map(move |m| Msg::IdxMsg(appi, m))
-                .into();
-            col = col.push(overhang(
-                (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
-                i,
-            ));
-        } else {
+            {
+                let i = oh.map(move |m| Msg::IdxMsg(appi, m)).into();
+                col = col.push(overhang(
+                    (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
+                    i,
+                ));
+                has_oh = true;
+            }
+        }
+        if !has_oh {
             col = col.push(
                 prim::Prim::new(iced_graphics::Primitive::None)
                     .height(Length::Units(OVERHANG_HEIGHT_MAX)),
@@ -350,8 +367,11 @@ impl IcedSurface for Dock {
         }
     }
 
-    async fn react(&mut self, _event: Self::ExternalEvent) {
-        self.update_apps();
+    async fn react(&mut self, event: Self::ExternalEvent) {
+        match event {
+            Evt::ToplevelsChanged => self.update_apps(),
+            Evt::PowerChanged(p) => self.power.update(p),
+        }
     }
 
     async fn on_pointer_enter(&mut self) {
