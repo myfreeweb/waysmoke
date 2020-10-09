@@ -2488,7 +2488,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.6.4"
-source = "git+https://github.com/myfreeweb/wgpu?branch=v0.6-alpha#db094beb957dfad2079d1804364d45f3718d0fb2"
+source = "git+https://github.com/myfreeweb/wgpu?branch=v0.6-alpha#5b491667f02fa8ca85987c1875cb680991961353"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2514,7 +2514,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.6.1"
-source = "git+https://github.com/myfreeweb/wgpu?branch=v0.6-alpha#db094beb957dfad2079d1804364d45f3718d0fb2"
+source = "git+https://github.com/myfreeweb/wgpu?branch=v0.6-alpha#5b491667f02fa8ca85987c1875cb680991961353"
 dependencies = [
  "bitflags",
 ]
