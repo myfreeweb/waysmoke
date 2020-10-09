@@ -3,7 +3,7 @@ pub use iced_native::Rectangle;
 use iced_native::{mouse, Cache, Damage, Point, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
-use std::{marker::Unpin, pin::Pin, sync::Arc};
+use std::{marker::Unpin, pin::Pin, sync::Arc, time::Duration};
 
 pub use async_trait::async_trait;
 pub use futures::prelude::*;
@@ -240,7 +240,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                     return;
                 }
                 self.ptr_active = false;
-                self.leave_timeout = Some(glib::timeout_future(200).fuse());
+                self.leave_timeout = Some(glib::timeout_future(Duration::from_millis(200)).fuse());
             }
             wl_pointer::Event::Button { button, state, .. } => {
                 if !self.ptr_active {

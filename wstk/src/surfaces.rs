@@ -1,4 +1,4 @@
-use smithay_client_toolkit::{default_environment, init_default_environment};
+use smithay_client_toolkit::{default_environment, new_default_environment};
 pub use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
     get_surface_scale_factor,
@@ -36,7 +36,7 @@ default_environment!(Env,
 toplevel_handler!(Env, toplevel_manager);
 
 pub fn make_env() -> Result<(Environment<Env>, Display, EventQueue), ConnectError> {
-    init_default_environment!(
+    new_default_environment!(
         Env,
         fields = [
             layer_shell: SimpleGlobal::new(),
