@@ -23,10 +23,10 @@ impl Docklet for PowerDocklet {
         use iced_native::*;
 
         let img = icons::IconHandle::from_path(apps::icon(match self.st.total {
-            PowerDeviceState::Battery { ref icon_name, .. } => {
+            Some(PowerDeviceState::Battery { ref icon_name, .. }) => {
                 icon_name.trim_end_matches("-symbolic")
             }
-            PowerDeviceState::Line { .. } => "ac-adapter",
+            _ => "ac-adapter",
         }))
         .widget();
 

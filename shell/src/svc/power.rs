@@ -98,7 +98,7 @@ impl PowerDeviceState {
 
 #[derive(Debug, Clone)]
 pub struct PowerState {
-    pub total: PowerDeviceState,
+    pub total: Option<PowerDeviceState>,
     // TODO: all the devices
 }
 
@@ -122,7 +122,7 @@ impl PowerService {
         .unwrap();
 
         let cur_state = Arc::new(RefCell::new(PowerState {
-            total: PowerDeviceState::query(&display_device).unwrap(),
+            total: PowerDeviceState::query(&display_device),
         }));
         let cur_state1 = cur_state.clone();
 
@@ -136,7 +136,9 @@ impl PowerService {
                     .get::<HashMap<String, glib::Variant>>()
                     .unwrap();
                 let mut stref = cur_state1.borrow_mut();
-                stref.total.update(new_props);
+                if let Some(ref mut total) = stref.total {
+                    total.update(new_props);
+                }
                 tx.unbounded_send(stref.clone()).unwrap();
                 None
             })
