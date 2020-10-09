@@ -95,6 +95,7 @@ fn themed_icon(icon: &gio::ThemedIcon) -> Option<linicon::IconPath> {
 
 fn icons_iter(name: &str, size: u16, scale: u16) -> impl Iterator<Item = linicon::IconPath> {
     linicon::lookup_icon(name)
+        .from_theme("Adwaita")
         .with_search_paths(&PATHS[..])
         .unwrap()
         .with_size(size)
@@ -120,6 +121,7 @@ fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPa
 
 pub fn icon(name: &str) -> linicon::IconPath {
     linicon::lookup_icon(name)
+        .from_theme("Adwaita")
         .with_search_paths(&PATHS[..])
         .unwrap()
         .with_size(128)

@@ -9,7 +9,7 @@ lazy_static = "1"
 futures = "0.3"
 glib = "=0.10.0"
 gio = { version = "=0.9.0", features = ["v2_46"] }
-linicon = "2"
+linicon = { version = "2", default-features = false }
 tree_magic_mini = "1"
 wgpu = "0.6"
 
