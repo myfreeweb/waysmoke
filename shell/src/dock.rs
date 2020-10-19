@@ -3,8 +3,8 @@ use gio::{AppInfoExt, DesktopAppInfoExt};
 use wstk::*;
 
 lazy_static::lazy_static! {
-    static ref UNKNOWN_ICON: icons::IconHandle =
-        icons::IconHandle::from_path(apps::icon("application-x-executable"));
+    static ref UNKNOWN_ICON: wstk::ImageHandle =
+        icons::icon_from_path(apps::icon("application-x-executable"));
 }
 
 pub const OVERHANG_HEIGHT_MAX: u16 = 420;
@@ -30,6 +30,9 @@ pub enum Msg {
 pub trait Docklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
     fn width(&self) -> u16;
+    fn retained_icon(&self) -> Option<wstk::ImageHandle> {
+        None
+    }
     fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {
         None
     }
@@ -258,52 +261,41 @@ impl IcedSurface for Dock {
             );
         }
 
-        // XXX: removing the icons from the output causes them to be unloaded
-        //      so for now we just make the dock invisible
+        if self.is_pointed || self.is_touched {
+            let row = self.docklets().enumerate().fold(
+                Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
+                |row, (i, docklet)| {
+                    row.push(
+                        unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
+                            .widget(&self.ctx)
+                            .map(move |m| Msg::IdxMsg(i, m)),
+                    )
+                },
+            );
+            // TODO: show toplevels for unrecognized apps
 
-        // if self.is_pointed || self.is_touched {
-        let row = self.docklets().enumerate().fold(
-            Row::new().align_items(Align::Center).spacing(DOCK_PADDING),
-            |row, (i, docklet)| {
-                row.push(
-                    unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
-                        .widget(&self.ctx)
-                        .map(move |m| Msg::IdxMsg(i, m)),
-                )
-            },
-        );
-        // TODO: show toplevels for unrecognized apps
+            let dock = Container::new(
+                Container::new(row)
+                    .style(style::Dock(style::DARK_COLOR))
+                    .width(Length::Shrink)
+                    .height(Length::Shrink)
+                    .center_x()
+                    .center_y()
+                    .padding(DOCK_PADDING),
+            )
+            .width(Length::Fill)
+            .height(Length::Units(DOCK_HEIGHT))
+            .center_x();
 
-        let dock = Container::new(
-            Container::new(row)
-                .style(style::Dock(style::DARK_COLOR))
-                .width(Length::Shrink)
-                .height(Length::Shrink)
-                .center_x()
-                .center_y()
-                .padding(if self.is_pointed || self.is_touched {
-                    DOCK_PADDING
-                } else {
-                    0
-                }),
-        )
-        .width(if self.is_pointed || self.is_touched {
-            Length::Fill
+            col = col.push(dock).push(
+                prim::Prim::new(iced_graphics::Primitive::None).height(Length::Units(DOCK_GAP)),
+            );
         } else {
-            Length::Units(0)
-        })
-        .height(Length::Units(DOCK_HEIGHT))
-        .center_x();
-
-        col = col
-            .push(dock)
-            .push(prim::Prim::new(iced_graphics::Primitive::None).height(Length::Units(DOCK_GAP)));
-        // } else {
-        //     col = col.push(
-        //         prim::Prim::new(iced_graphics::Primitive::None)
-        //             .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
-        //     );
-        // }
+            col = col.push(
+                prim::Prim::new(iced_graphics::Primitive::None)
+                    .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
+            );
+        }
 
         let bar = Container::new(
             prim::Prim::new(iced_graphics::Primitive::Quad {
@@ -354,6 +346,10 @@ impl IcedSurface for Dock {
             });
         }
         Some(result)
+    }
+
+    fn retained_images(&mut self) -> Vec<wstk::ImageHandle> {
+        self.docklets().flat_map(|d| d.retained_icon()).collect()
     }
 
     async fn update(&mut self, message: Self::Message) {

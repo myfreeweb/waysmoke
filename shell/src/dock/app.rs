@@ -8,7 +8,7 @@ pub enum Msg {
 
 pub struct AppDocklet {
     pub app: apps::App,
-    pub icon: icons::IconHandle,
+    pub icon: wstk::ImageHandle,
     pub button: iced_native::button::State,
     pub evl: addeventlistener::State,
     pub toplevels_scrollable: iced_native::scrollable::State,
@@ -19,7 +19,7 @@ impl AppDocklet {
     pub fn new(app: apps::App) -> AppDocklet {
         let icon = app
             .icon()
-            .map(icons::IconHandle::from_path)
+            .map(icons::icon_from_path)
             .unwrap_or_else(|| UNKNOWN_ICON.clone());
         AppDocklet {
             app,
@@ -47,7 +47,7 @@ impl Docklet for AppDocklet {
         let toplevels = ctx.toplevels.borrow();
         let running = toplevels.values().any(|topl| topl.matches_id(self.id()));
 
-        let big_button = Button::new(&mut self.button, self.icon.clone().widget())
+        let big_button = Button::new(&mut self.button, icons::icon_widget(self.icon.clone()))
             .style(style::Dock(style::DARK_COLOR))
             .padding(APP_PADDING)
             .on_press(DockletMsg::App(Msg::ActivateApp));
@@ -69,6 +69,10 @@ impl Docklet for AppDocklet {
     fn width(&self) -> u16 {
         // TODO: will be dynamic based on extras
         icons::ICON_SIZE + APP_PADDING * 2
+    }
+
+    fn retained_icon(&self) -> Option<wstk::ImageHandle> {
+        Some(self.icon.clone())
     }
 
     fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {

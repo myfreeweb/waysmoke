@@ -22,13 +22,12 @@ impl Docklet for PowerDocklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let img = icons::IconHandle::from_path(apps::icon(match self.st.total {
+        let img = icons::icon_widget(icons::icon_from_path(apps::icon(match self.st.total {
             Some(PowerDeviceState::Battery { ref icon_name, .. }) => {
                 icon_name.trim_end_matches("-symbolic")
             }
             _ => "ac-adapter",
-        }))
-        .widget();
+        })));
 
         let listener =
             AddEventListener::new(&mut self.evl, img).on_pointer_enter(DockletMsg::Hover);

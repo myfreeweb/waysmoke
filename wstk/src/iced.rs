@@ -10,6 +10,12 @@ pub use futures::prelude::*;
 
 use crate::{event_loop::*, surfaces::*};
 
+#[derive(Clone)]
+pub enum ImageHandle {
+    Vector(iced_native::svg::Handle),
+    Raster(iced_native::image::Handle),
+}
+
 pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Renderer>;
 
 #[async_trait(?Send)]
@@ -19,6 +25,7 @@ pub trait IcedSurface {
 
     fn view(&mut self) -> Element<'_, Self::Message>;
     fn input_region(&self, width: i32, height: i32) -> Option<Vec<Rectangle<i32>>>;
+    fn retained_images(&mut self) -> Vec<ImageHandle>;
 
     async fn update(&mut self, message: Self::Message);
     async fn react(&mut self, event: Self::ExternalEvent);
@@ -114,6 +121,13 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     }
 
     async fn render(&mut self) {
+        for h in self.surface.retained_images() {
+            match h {
+                ImageHandle::Raster(h) => self.renderer.backend_mut().retain_raster(&h),
+                ImageHandle::Vector(h) => self.renderer.backend_mut().retain_vector(&h),
+            }
+        }
+
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
         let mut user_interface = UserInterface::build(
