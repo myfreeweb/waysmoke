@@ -38,6 +38,10 @@ impl Docklet for PowerDocklet {
         icons::ICON_SIZE + APP_PADDING * 2
     }
 
+    fn retained_icon(&self) -> Option<wstk::ImageHandle> {
+        Some(self.icon.clone())
+    }
+
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {}
 
     async fn run(&mut self) {
