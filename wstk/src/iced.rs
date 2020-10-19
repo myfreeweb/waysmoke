@@ -121,6 +121,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     }
 
     async fn render(&mut self) {
+        if self.swap_chain.is_none() {
+            eprintln!("WARN: render attempted without swapchain");
+            return;
+        }
+
         for h in self.surface.retained_images() {
             match h {
                 ImageHandle::Raster(h) => self.renderer.backend_mut().retain_raster(&h),
