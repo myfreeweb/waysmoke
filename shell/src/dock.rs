@@ -31,15 +31,15 @@ pub enum Msg {
 
 #[async_trait(?Send)]
 pub trait Docklet {
-    fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
+    fn widget(&mut self) -> Element<DockletMsg>;
     fn width(&self) -> u16;
     fn retained_icon(&self) -> Option<wstk::ImageHandle> {
         None
     }
-    fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {
+    fn overhang(&mut self) -> Option<Element<DockletMsg>> {
         None
     }
-    fn update(&mut self, ctx: &DockCtx, msg: DockletMsg);
+    fn update(&mut self, msg: DockletMsg);
     async fn run(&mut self);
 }
 
@@ -262,8 +262,8 @@ impl IcedSurface for Dock {
         if let Some(appi) = self.hovered_docklet() {
             let our_center = self.center_of_docklet(appi);
             let docklet = self.docklets().nth(appi).unwrap();
-            if let Some(oh) = unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
-                .overhang(&self.ctx)
+            if let Some(oh) =
+                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.overhang()
             {
                 let i = oh.map(move |m| Msg::IdxMsg(appi, m)).into();
                 col = col.push(overhang(
@@ -286,7 +286,7 @@ impl IcedSurface for Dock {
                 |row, (i, docklet)| {
                     row.push(
                         unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
-                            .widget(&self.ctx)
+                            .widget()
                             .map(move |m| Msg::IdxMsg(i, m)),
                     )
                 },
@@ -376,8 +376,7 @@ impl IcedSurface for Dock {
             Msg::IdxMsg(i, DockletMsg::Hover) => self.hovered_docklet = Some(i),
             Msg::IdxMsg(i, dmsg) => {
                 let docklet = self.docklets().nth(i).unwrap();
-                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }
-                    .update(&self.ctx, dmsg)
+                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.update(dmsg)
             }
         }
     }

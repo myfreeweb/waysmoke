@@ -62,7 +62,7 @@ impl AppDocklet {
 
 #[async_trait(?Send)]
 impl Docklet for AppDocklet {
-    fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
+    fn widget(&mut self) -> Element<DockletMsg> {
         use iced_native::*;
 
         let running = !self.our_toplevels.is_empty();
@@ -95,7 +95,7 @@ impl Docklet for AppDocklet {
         Some(self.icon.clone())
     }
 
-    fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {
+    fn overhang(&mut self) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
         let appid = &self.app.id;
@@ -136,7 +136,7 @@ impl Docklet for AppDocklet {
         )
     }
 
-    fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {
+    fn update(&mut self, msg: DockletMsg) {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
                 for topl in self.our_toplevels.values() {

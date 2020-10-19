@@ -18,7 +18,7 @@ impl PowerDocklet {
 
 #[async_trait(?Send)]
 impl Docklet for PowerDocklet {
-    fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
+    fn widget(&mut self) -> Element<DockletMsg> {
         use iced_native::*;
 
         let img = icons::icon_widget(self.icon.clone());
@@ -42,7 +42,7 @@ impl Docklet for PowerDocklet {
         Some(self.icon.clone())
     }
 
-    fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {}
+    fn update(&mut self, msg: DockletMsg) {}
 
     async fn run(&mut self) {
         let st = self.rx.next().await.unwrap();
