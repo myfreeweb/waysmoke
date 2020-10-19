@@ -16,7 +16,7 @@ pub struct AppDocklet {
     pub rx: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
-    pub toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>, // TODO
+    pub our_toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
 }
 
 impl AppDocklet {
@@ -38,7 +38,7 @@ impl AppDocklet {
             toplevels_scrollable: Default::default(),
             toplevels_buttons: Default::default(),
             rx,
-            toplevels: HashMap::new(),
+            our_toplevels: HashMap::new(),
         }
     }
 
@@ -61,10 +61,7 @@ impl Docklet for AppDocklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let running = self
-            .toplevels
-            .values()
-            .any(|topl| topl.matches_id(self.id()));
+        let running = !self.our_toplevels.is_empty();
 
         let big_button = Button::new(&mut self.button, icons::icon_widget(self.icon.clone()))
             .style(style::Dock(style::DARK_COLOR))
@@ -98,17 +95,12 @@ impl Docklet for AppDocklet {
         use iced_native::*;
 
         let appid = &self.app.id;
-        while self.toplevels_buttons.len() < self.toplevels.values().len() {
+        while self.toplevels_buttons.len() < self.our_toplevels.values().len() {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
         // ugh, fold results in closure lifetime issues
-        for (i, topl) in self
-            .toplevels
-            .values()
-            .filter(|topl| topl.matches_id(appid))
-            .enumerate()
-        {
+        for (i, topl) in self.our_toplevels.values().enumerate() {
             btns = btns.push(
                 Button::new(
                     // and even here it complains about "multiple" borrows of self.toplevels_buttons >_<
@@ -143,11 +135,9 @@ impl Docklet for AppDocklet {
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
-                for topl in self.toplevels.values() {
-                    if topl.matches_id(self.id()) {
-                        topl.handle.activate(&ctx.seat);
-                        return;
-                    }
+                for topl in self.our_toplevels.values() {
+                    topl.handle.activate(&ctx.seat);
+                    return;
                 }
                 self.app
                     .info
@@ -155,9 +145,8 @@ impl Docklet for AppDocklet {
                     .unwrap()
             }
             DockletMsg::App(Msg::ActivateToplevel(topli)) => {
-                self.toplevels
+                self.our_toplevels
                     .values()
-                    .filter(|topl| topl.matches_id(self.id()))
                     .nth(topli)
                     .unwrap()
                     .handle
@@ -169,6 +158,10 @@ impl Docklet for AppDocklet {
 
     async fn run(&mut self) {
         let toplevels = self.rx.next().await.unwrap();
-        self.toplevels = (*toplevels).clone();
+        self.our_toplevels = toplevels
+            .iter()
+            .filter(|(_, topl)| topl.matches_id(self.id()))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
     }
 }
