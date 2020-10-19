@@ -1,4 +1,5 @@
-use futures::{channel::mpsc, prelude::*};
+use bus_queue::flavors::arc_swap as bus;
+use futures::prelude::*;
 use smithay_client_toolkit::{
     environment::GlobalHandler,
     reexports::client::{
@@ -49,15 +50,18 @@ pub type ToplevelStates = Rc<RefCell<HashMap<ToplevelKey, ToplevelState>>>;
 pub struct ToplevelHandler {
     global: Option<Attached<toplevel_manager::ZwlrForeignToplevelManagerV1>>,
     states: ToplevelStates,
-    channels: Rc<RefCell<Vec<mpsc::UnboundedSender<()>>>>,
+    tx: Rc<RefCell<bus::Publisher<()>>>,
+    rx: bus::Subscriber<()>,
 }
 
 impl ToplevelHandler {
     pub fn new() -> ToplevelHandler {
+        let (tx, rx) = bus::bounded(3);
         ToplevelHandler {
             global: None,
             states: Rc::new(RefCell::new(HashMap::new())),
-            channels: Rc::new(RefCell::new(Vec::new())),
+            tx: Rc::new(RefCell::new(tx)),
+            rx,
         }
     }
 }
@@ -72,7 +76,7 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
     ) {
         let main = registry.bind::<toplevel_manager::ZwlrForeignToplevelManagerV1>(version, id);
         let states = self.states.clone();
-        let channels = self.channels.clone();
+        let tx = self.tx.clone();
         main.quick_assign(move |_, event, _| match event {
             toplevel_manager::Event::Toplevel { toplevel } => {
                 let mut topl = ToplevelState {
@@ -84,7 +88,7 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
                     state: Vec::new(),
                 };
                 let states = states.clone();
-                let channels = channels.clone();
+                let tx = tx.clone();
                 toplevel.quick_assign(move |_, event, _| match event {
                     toplevel_handle::Event::Title { title } => topl.title = title,
                     toplevel_handle::Event::AppId { app_id } => {
@@ -105,25 +109,17 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
                         states
                             .borrow_mut()
                             .insert(ToplevelKey(topl.handle.clone()), topl.clone());
-                        let channels = channels.clone();
-                        glib::MainContext::default().spawn_local(async move {
-                            let chans = channels.borrow_mut();
-                            for mut chan in chans.iter() {
-                                chan.send(()).await.unwrap()
-                            }
-                        });
+                        let tx = tx.clone();
+                        glib::MainContext::default()
+                            .spawn_local(async move { tx.borrow_mut().send(()).await.unwrap() });
                     }
                     toplevel_handle::Event::Closed => {
                         states
                             .borrow_mut()
                             .remove(&ToplevelKey(topl.handle.clone()));
-                        let channels = channels.clone();
-                        glib::MainContext::default().spawn_local(async move {
-                            let chans = channels.borrow_mut();
-                            for mut chan in chans.iter() {
-                                chan.send(()).await.unwrap()
-                            }
-                        });
+                        let tx = tx.clone();
+                        glib::MainContext::default()
+                            .spawn_local(async move { tx.borrow_mut().send(()).await.unwrap() });
                     }
                     toplevel_handle::Event::Parent { .. } => {}
                     x => panic!("Unknown toplevel event {:?}", x),
@@ -140,15 +136,13 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
 }
 
 pub trait HasToplevelManager {
-    fn toplevel_updates(&mut self) -> mpsc::UnboundedReceiver<()>;
+    fn toplevel_updates(&mut self) -> bus::Subscriber<()>;
     fn toplevels(&self) -> Rc<RefCell<HashMap<ToplevelKey, ToplevelState>>>;
 }
 
 impl HasToplevelManager for ToplevelHandler {
-    fn toplevel_updates(&mut self) -> mpsc::UnboundedReceiver<()> {
-        let (tx, rx) = mpsc::unbounded();
-        self.channels.borrow_mut().push(tx);
-        rx
+    fn toplevel_updates(&mut self) -> bus::Subscriber<()> {
+        self.rx.clone()
     }
 
     fn toplevels(&self) -> Rc<RefCell<HashMap<ToplevelKey, ToplevelState>>> {
@@ -159,7 +153,7 @@ impl HasToplevelManager for ToplevelHandler {
 macro_rules! toplevel_handler {
     ($env:ident, $field:ident) => {
         impl HasToplevelManager for $env {
-            fn toplevel_updates(&mut self) -> futures::channel::mpsc::UnboundedReceiver<()> {
+            fn toplevel_updates(&mut self) -> bus_queue::flavors::arc_swap::Subscriber<()> {
                 self.$field.toplevel_updates()
             }
             fn toplevels(

@@ -1,13 +1,11 @@
-use futures::{
-    channel::{mpsc, oneshot},
-    stream::Stream,
-};
+use futures::prelude::*;
 use gio::prelude::*;
 use std::{
     cell::{Ref, RefCell},
     collections::HashMap,
     sync::Arc,
 };
+use wstk::bus;
 
 #[derive(Debug, Clone)]
 pub enum PowerDeviceState {
@@ -109,7 +107,7 @@ pub struct PowerService {
 }
 
 impl PowerService {
-    pub async fn new() -> (PowerService, impl Stream<Item = PowerState>) {
+    pub async fn new() -> (PowerService, bus::Subscriber<PowerState>) {
         let display_device = gio::DBusProxy::new_for_bus_future(
             gio::BusType::System,
             gio::DBusProxyFlags::NONE,
@@ -126,7 +124,8 @@ impl PowerService {
         }));
         let cur_state1 = cur_state.clone();
 
-        let (tx, rx) = mpsc::unbounded();
+        let (tx, rx) = bus::bounded(3);
+        let atx = Arc::new(RefCell::new(tx));
         display_device
             .connect_local("g-properties-changed", true, move |args| {
                 let new_props = args[1]
@@ -139,7 +138,10 @@ impl PowerService {
                 if let Some(ref mut total) = stref.total {
                     total.update(new_props);
                 }
-                tx.unbounded_send(stref.clone()).unwrap();
+                let nst = stref.clone();
+                let atx = atx.clone();
+                glib::MainContext::default()
+                    .spawn_local(async move { atx.borrow_mut().send(nst).await.unwrap() });
                 None
             })
             .unwrap();

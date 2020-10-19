@@ -34,8 +34,8 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     let (power, power_updates) = svc::power::PowerService::new().await;
 
     let mut dock_evts = add_stream(
-        toplevel_updates.map(|()| dock::Evt::ToplevelsChanged),
-        power_updates.map(|ps| dock::Evt::PowerChanged(ps)),
+        toplevel_updates.map(|_| dock::Evt::ToplevelsChanged),
+        power_updates.map(|ps| dock::Evt::PowerChanged((*ps).clone())),
     );
 
     let seat = env.get_all_seats()[0].detach();
