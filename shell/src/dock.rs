@@ -29,6 +29,7 @@ pub enum Msg {
     IdxMsg(usize, DockletMsg),
 }
 
+#[async_trait(?Send)]
 pub trait Docklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg>;
     fn width(&self) -> u16;
@@ -39,6 +40,7 @@ pub trait Docklet {
         None
     }
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg);
+    async fn run(&mut self);
 }
 
 mod app;
@@ -112,7 +114,6 @@ fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
 #[derive(Clone)]
 pub struct DockCtx {
     pub seat: wl_seat::WlSeat,
-    pub toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     pub toplevel_updates: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
@@ -125,6 +126,9 @@ pub struct Dock {
     is_pointed: bool,
     is_touched: bool,
     hovered_docklet: Option<usize>,
+    toplevel_updates: wstk::bus::Subscriber<
+        HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+    >,
 
     apps: Vec<app::AppDocklet>,
     power: power::PowerDocklet,
@@ -132,13 +136,16 @@ pub struct Dock {
 
 impl Dock {
     pub fn new(ctx: DockCtx) -> Dock {
+        let power = power::PowerDocklet::new(ctx.power_updates.clone());
+        let toplevel_updates = ctx.toplevel_updates.clone();
         Dock {
             ctx,
             is_pointed: false,
             is_touched: false,
             hovered_docklet: None,
+            toplevel_updates,
             apps: Vec::new(),
-            power: power::PowerDocklet::new(),
+            power,
         }
     }
 
@@ -146,7 +153,6 @@ impl Dock {
         &mut self,
         toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     ) {
-        self.ctx.toplevels = toplevels.clone();
         self.hovered_docklet = None;
 
         let docked = vec![
@@ -159,7 +165,7 @@ impl Dock {
 
         for id in docked.iter() {
             if self.apps.iter().find(|a| a.id() == *id).is_none() {
-                if let Some(app) = app::AppDocklet::from_id(id) {
+                if let Some(app) = app::AppDocklet::from_id(id, self.ctx.toplevel_updates.clone()) {
                     self.apps.push(app);
                 }
             }
@@ -167,11 +173,14 @@ impl Dock {
 
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
-                if let Some(app) = app::AppDocklet::from_id(&topl.app_id).or_else(|| {
-                    topl.gtk_app_id
-                        .as_ref()
-                        .and_then(|gid| app::AppDocklet::from_id(&gid))
-                }) {
+                if let Some(app) =
+                    app::AppDocklet::from_id(&topl.app_id, self.ctx.toplevel_updates.clone())
+                        .or_else(|| {
+                            topl.gtk_app_id.as_ref().and_then(|gid| {
+                                app::AppDocklet::from_id(&gid, self.ctx.toplevel_updates.clone())
+                            })
+                        })
+                {
                     self.apps.push(app);
                 }
             }
@@ -365,10 +374,24 @@ impl IcedSurface for Dock {
     }
 
     async fn run(&mut self) -> bool {
-        let mut sf = self; /* async-trait has bugs with this, causing E0434 */
-        futures::select! {
-            t = sf.ctx.toplevel_updates.next().fuse() => if let Some(tt) = t { sf.update_apps((*tt).clone()) },
-            p = sf.ctx.power_updates.next().fuse() => if let Some(pp) = p { sf.power.update((*pp).clone()) },
+        // ARGH: avoiding multiple mutable borrows is so hard in a situation like this!
+        //       even sel's Drop (!) mutably borrows self.apps, hence the clone/drop dance.
+        //       also the 'docklets_mut' has to be inline - if it was a method, rustc couldn't
+        //       see inside of it and find that it only touches self.apps and not the rest of self
+        let sel = future::select(
+            self.toplevel_updates.next(),
+            future::select_all(
+                self.apps
+                    .iter_mut()
+                    .map(|x| x.run())
+                    .chain(std::iter::once(self.power.run())),
+            ),
+        )
+        .await;
+        if let future::Either::Left((Some(ref tt), _)) = sel {
+            let xt = tt.clone();
+            drop(sel);
+            self.update_apps((*xt).clone());
         }
         true
     }

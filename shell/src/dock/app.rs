@@ -13,10 +13,19 @@ pub struct AppDocklet {
     pub evl: addeventlistener::State,
     pub toplevels_scrollable: iced_native::scrollable::State,
     pub toplevels_buttons: Vec<iced_native::button::State>,
+    pub rx: wstk::bus::Subscriber<
+        HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+    >,
+    pub toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>, // TODO
 }
 
 impl AppDocklet {
-    pub fn new(app: apps::App) -> AppDocklet {
+    pub fn new(
+        app: apps::App,
+        rx: wstk::bus::Subscriber<
+            HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+        >,
+    ) -> AppDocklet {
         let icon = app
             .icon()
             .map(icons::icon_from_path)
@@ -28,6 +37,8 @@ impl AppDocklet {
             evl: Default::default(),
             toplevels_scrollable: Default::default(),
             toplevels_buttons: Default::default(),
+            rx,
+            toplevels: HashMap::new(),
         }
     }
 
@@ -35,16 +46,22 @@ impl AppDocklet {
         &self.app.id
     }
 
-    pub fn from_id(id: &str) -> Option<AppDocklet> {
-        apps::App::lookup(id).map(AppDocklet::new)
+    pub fn from_id(
+        id: &str,
+        rx: wstk::bus::Subscriber<
+            HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+        >,
+    ) -> Option<AppDocklet> {
+        apps::App::lookup(id).map(|a| AppDocklet::new(a, rx))
     }
 }
 
+#[async_trait(?Send)]
 impl Docklet for AppDocklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let running = ctx
+        let running = self
             .toplevels
             .values()
             .any(|topl| topl.matches_id(self.id()));
@@ -81,12 +98,12 @@ impl Docklet for AppDocklet {
         use iced_native::*;
 
         let appid = &self.app.id;
-        while self.toplevels_buttons.len() < ctx.toplevels.values().len() {
+        while self.toplevels_buttons.len() < self.toplevels.values().len() {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
         // ugh, fold results in closure lifetime issues
-        for (i, topl) in ctx
+        for (i, topl) in self
             .toplevels
             .values()
             .filter(|topl| topl.matches_id(appid))
@@ -126,7 +143,7 @@ impl Docklet for AppDocklet {
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
-                for topl in ctx.toplevels.values() {
+                for topl in self.toplevels.values() {
                     if topl.matches_id(self.id()) {
                         topl.handle.activate(&ctx.seat);
                         return;
@@ -138,7 +155,7 @@ impl Docklet for AppDocklet {
                     .unwrap()
             }
             DockletMsg::App(Msg::ActivateToplevel(topli)) => {
-                ctx.toplevels
+                self.toplevels
                     .values()
                     .filter(|topl| topl.matches_id(self.id()))
                     .nth(topli)
@@ -148,5 +165,10 @@ impl Docklet for AppDocklet {
             }
             _ => (),
         }
+    }
+
+    async fn run(&mut self) {
+        let toplevels = self.rx.next().await.unwrap();
+        self.toplevels = (*toplevels).clone();
     }
 }

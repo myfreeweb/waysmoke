@@ -36,7 +36,6 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     let mut dock = IcedInstance::new(
         dock::Dock::new(dock::DockCtx {
             seat,
-            toplevels: std::collections::HashMap::new(),
             toplevel_updates,
             power,
             power_updates,

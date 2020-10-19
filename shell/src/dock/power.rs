@@ -3,21 +3,20 @@ use crate::{dock::*, style, svc::power::*, util::apps};
 pub struct PowerDocklet {
     pub st: Option<PowerState>,
     pub evl: addeventlistener::State,
+    pub rx: wstk::bus::Subscriber<svc::power::PowerState>,
 }
 
 impl PowerDocklet {
-    pub fn new() -> Self {
+    pub fn new(rx: wstk::bus::Subscriber<svc::power::PowerState>) -> Self {
         PowerDocklet {
             st: None,
             evl: Default::default(),
+            rx,
         }
-    }
-
-    pub fn update(&mut self, st: PowerState) {
-        self.st = Some(st);
     }
 }
 
+#[async_trait(?Send)]
 impl Docklet for PowerDocklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
@@ -51,4 +50,9 @@ impl Docklet for PowerDocklet {
     }
 
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {}
+
+    async fn run(&mut self) {
+        let st = self.rx.next().await.unwrap();
+        self.st = Some((*st).clone());
+    }
 }
