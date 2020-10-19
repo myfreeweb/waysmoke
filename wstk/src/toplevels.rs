@@ -125,10 +125,11 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
                             }
                         });
                     }
-                    _ => panic!(""),
+                    toplevel_handle::Event::Parent { .. } => {}
+                    x => panic!("Unknown toplevel event {:?}", x),
                 });
             }
-            _ => panic!(""),
+            x => panic!("Unknown toplevel manager event {:?}", x),
         });
         self.global = Some((*main).clone())
     }

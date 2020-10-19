@@ -793,11 +793,12 @@ dependencies = [
 
 [[package]]
 name = "gfx-backend-dx12"
-version = "0.6.8"
+version = "0.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9064fb184f8bb4cfaa59ef196eb94167a39fa56ca84b2c937fd6e6f0164f33ba"
+checksum = "ffc5e9d0f08020cc66a41f1347776fdc76c14c11a65dc4576f4550423bef4480"
 dependencies = [
  "arrayvec",
+ "bit-set",
  "bitflags",
  "d3d12",
  "gfx-auxil",
@@ -944,7 +945,7 @@ checksum = "8637c7ec4fd0776c51eeab3e0d5d1aa7e440ece3fc2ee7d674e13c957287bfc1"
 [[package]]
 name = "glib"
 version = "0.10.0"
-source = "git+https://github.com/gtk-rs/glib#e515eb89429ccaf8e00eda2193092e8c9ae96606"
+source = "git+https://github.com/gtk-rs/glib#5e0222f066550e08b7933ce0d7b8b6e7e9580c00"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -962,7 +963,7 @@ dependencies = [
 [[package]]
 name = "glib-macros"
 version = "0.10.0"
-source = "git+https://github.com/gtk-rs/glib#e515eb89429ccaf8e00eda2193092e8c9ae96606"
+source = "git+https://github.com/gtk-rs/glib#5e0222f066550e08b7933ce0d7b8b6e7e9580c00"
 dependencies = [
  "anyhow",
  "heck",
@@ -2430,8 +2431,7 @@ checksum = "1d649a3145108d7d3fbcde896a468d1bd636791823c9921135218ad89be08307"
 [[package]]
 name = "wayland-client"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80c54f9b90b2c044784f91fe22c5619a8a9c681db38492f2fd78ff968cf3f184"
+source = "git+https://github.com/myfreeweb/wayland-rs?branch=update-wlr#135dfc78bfde132c538acc8803c1e3b192db7637"
 dependencies = [
  "bitflags",
  "downcast-rs",
@@ -2446,8 +2446,7 @@ dependencies = [
 [[package]]
 name = "wayland-commons"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7602d75560fe6f02cac723609cce658042fe60541b5107999818d29d4dab7cfa"
+source = "git+https://github.com/myfreeweb/wayland-rs?branch=update-wlr#135dfc78bfde132c538acc8803c1e3b192db7637"
 dependencies = [
  "nix 0.18.0",
  "once_cell",
@@ -2458,8 +2457,7 @@ dependencies = [
 [[package]]
 name = "wayland-cursor"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0446b959c5b5b4b2c11f63112fc7cbeb50ecd9f2c340d2b0ea632875685baf04"
+source = "git+https://github.com/myfreeweb/wayland-rs?branch=update-wlr#135dfc78bfde132c538acc8803c1e3b192db7637"
 dependencies = [
  "nix 0.18.0",
  "wayland-client",
@@ -2469,8 +2467,7 @@ dependencies = [
 [[package]]
 name = "wayland-protocols"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d419585bbdb150fb541579cff205c6095a86cd874530e41838d1f18a9569a08"
+source = "git+https://github.com/myfreeweb/wayland-rs?branch=update-wlr#135dfc78bfde132c538acc8803c1e3b192db7637"
 dependencies = [
  "bitflags",
  "wayland-client",
@@ -2481,8 +2478,7 @@ dependencies = [
 [[package]]
 name = "wayland-scanner"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1cc091af4b05a435312f7cefe3a26824d2017966a58362ca913f72c3d68e5e2"
+source = "git+https://github.com/myfreeweb/wayland-rs?branch=update-wlr#135dfc78bfde132c538acc8803c1e3b192db7637"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2492,8 +2488,7 @@ dependencies = [
 [[package]]
 name = "wayland-sys"
 version = "0.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5640f53d1fe6eaaa2e77b9ff015fe9a556173ce8388607f941aecfd9b05c73e"
+source = "git+https://github.com/myfreeweb/wayland-rs?branch=update-wlr#135dfc78bfde132c538acc8803c1e3b192db7637"
 dependencies = [
  "dlib",
  "pkg-config",
