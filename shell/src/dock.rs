@@ -1,5 +1,6 @@
 use crate::{style, svc, util::*};
 use gio::{AppInfoExt, DesktopAppInfoExt};
+use std::collections::HashMap;
 use wstk::*;
 
 lazy_static::lazy_static! {
@@ -107,16 +108,16 @@ fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
         .into()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Evt {
-    ToplevelsChanged,
+    ToplevelsChanged(HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>),
     PowerChanged(svc::power::PowerState),
 }
 
 #[derive(Clone)]
 pub struct DockCtx {
     pub seat: wl_seat::WlSeat,
-    pub toplevels: ToplevelStates,
+    pub toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     pub power: svc::power::PowerService,
 }
 
@@ -132,18 +133,21 @@ pub struct Dock {
 
 impl Dock {
     pub fn new(ctx: DockCtx) -> Dock {
-        let pst = ctx.power.state().clone();
         Dock {
             ctx,
             is_pointed: false,
             is_touched: false,
             hovered_docklet: None,
             apps: Vec::new(),
-            power: power::PowerDocklet::new(pst),
+            power: power::PowerDocklet::new(),
         }
     }
 
-    fn update_apps(&mut self) {
+    fn update_apps(
+        &mut self,
+        toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+    ) {
+        self.ctx.toplevels = toplevels.clone();
         self.hovered_docklet = None;
 
         let docked = vec![
@@ -162,7 +166,6 @@ impl Dock {
             }
         }
 
-        let toplevels = self.ctx.toplevels.borrow();
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
                 if let Some(app) = app::AppDocklet::from_id(&topl.app_id).or_else(|| {
@@ -365,7 +368,7 @@ impl IcedSurface for Dock {
 
     async fn react(&mut self, event: Self::ExternalEvent) {
         match event {
-            Evt::ToplevelsChanged => self.update_apps(),
+            Evt::ToplevelsChanged(t) => self.update_apps(t),
             Evt::PowerChanged(p) => self.power.update(p),
         }
     }

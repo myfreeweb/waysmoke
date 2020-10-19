@@ -44,8 +44,10 @@ impl Docklet for AppDocklet {
     fn widget(&mut self, ctx: &DockCtx) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let toplevels = ctx.toplevels.borrow();
-        let running = toplevels.values().any(|topl| topl.matches_id(self.id()));
+        let running = ctx
+            .toplevels
+            .values()
+            .any(|topl| topl.matches_id(self.id()));
 
         let big_button = Button::new(&mut self.button, icons::icon_widget(self.icon.clone()))
             .style(style::Dock(style::DARK_COLOR))
@@ -78,14 +80,14 @@ impl Docklet for AppDocklet {
     fn overhang(&mut self, ctx: &DockCtx) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
-        let toplevels = ctx.toplevels.borrow();
         let appid = &self.app.id;
-        while self.toplevels_buttons.len() < toplevels.values().len() {
+        while self.toplevels_buttons.len() < ctx.toplevels.values().len() {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
         // ugh, fold results in closure lifetime issues
-        for (i, topl) in toplevels
+        for (i, topl) in ctx
+            .toplevels
             .values()
             .filter(|topl| topl.matches_id(appid))
             .enumerate()
@@ -122,11 +124,9 @@ impl Docklet for AppDocklet {
     }
 
     fn update(&mut self, ctx: &DockCtx, msg: DockletMsg) {
-        let toplevels = ctx.toplevels.borrow();
-
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
-                for topl in toplevels.values() {
+                for topl in ctx.toplevels.values() {
                     if topl.matches_id(self.id()) {
                         topl.handle.activate(&ctx.seat);
                         return;
@@ -138,7 +138,7 @@ impl Docklet for AppDocklet {
                     .unwrap()
             }
             DockletMsg::App(Msg::ActivateToplevel(topli)) => {
-                toplevels
+                ctx.toplevels
                     .values()
                     .filter(|topl| topl.matches_id(self.id()))
                     .nth(topli)

@@ -21,7 +21,7 @@ pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Ren
 #[async_trait(?Send)]
 pub trait IcedSurface {
     type Message: std::fmt::Debug + Send;
-    type ExternalEvent: std::fmt::Debug + Send;
+    type ExternalEvent: Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
     fn input_region(&self, width: i32, height: i32) -> Option<Vec<Rectangle<i32>>>;

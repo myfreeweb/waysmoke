@@ -29,12 +29,12 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     // app.register::<gio::Cancellable>(None).unwrap();
     // let dbus = app.get_dbus_connection().unwrap();
 
-    let (toplevels, toplevel_updates) = env.with_inner(|i| (i.toplevels(), i.toplevel_updates()));
+    let toplevel_updates = env.with_inner(|i| i.toplevel_updates());
 
     let (power, power_updates) = svc::power::PowerService::new().await;
 
     let mut dock_evts = add_stream(
-        toplevel_updates.map(|_| dock::Evt::ToplevelsChanged),
+        toplevel_updates.map(|ts| dock::Evt::ToplevelsChanged((*ts).clone())),
         power_updates.map(|ps| dock::Evt::PowerChanged((*ps).clone())),
     );
 
@@ -42,7 +42,7 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     let mut dock = IcedInstance::new(
         dock::Dock::new(dock::DockCtx {
             seat,
-            toplevels,
+            toplevels: std::collections::HashMap::new(),
             power,
         }),
         env.clone(),

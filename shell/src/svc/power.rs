@@ -1,10 +1,6 @@
 use futures::prelude::*;
 use gio::prelude::*;
-use std::{
-    cell::{Ref, RefCell},
-    collections::HashMap,
-    sync::Arc,
-};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use wstk::bus;
 
 #[derive(Debug, Clone)]
@@ -103,7 +99,6 @@ pub struct PowerState {
 #[derive(Clone)]
 pub struct PowerService {
     display_device: gio::DBusProxy,
-    cur_state: Arc<RefCell<PowerState>>,
 }
 
 impl PowerService {
@@ -122,9 +117,9 @@ impl PowerService {
         let cur_state = Arc::new(RefCell::new(PowerState {
             total: PowerDeviceState::query(&display_device),
         }));
-        let cur_state1 = cur_state.clone();
 
-        let (tx, rx) = bus::bounded(3);
+        let (mut tx, rx) = bus::bounded(1);
+        tx.send(cur_state.borrow().clone()).await.unwrap();
         let atx = Arc::new(RefCell::new(tx));
         display_device
             .connect_local("g-properties-changed", true, move |args| {
@@ -134,7 +129,7 @@ impl PowerService {
                     .unwrap()
                     .get::<HashMap<String, glib::Variant>>()
                     .unwrap();
-                let mut stref = cur_state1.borrow_mut();
+                let mut stref = cur_state.borrow_mut();
                 if let Some(ref mut total) = stref.total {
                     total.update(new_props);
                 }
@@ -146,16 +141,6 @@ impl PowerService {
             })
             .unwrap();
 
-        (
-            PowerService {
-                display_device,
-                cur_state,
-            },
-            rx,
-        )
-    }
-
-    pub fn state(&self) -> Ref<PowerState> {
-        self.cur_state.borrow()
+        (PowerService { display_device }, rx)
     }
 }
