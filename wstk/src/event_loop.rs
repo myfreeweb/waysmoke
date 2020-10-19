@@ -28,14 +28,14 @@ pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
 }
 
 /// Creates a mpsc channel for a Wayland object's events.
-pub fn wayland_event_chan<I>(obj: &Main<I>) -> mpsc::UnboundedReceiver<Arc<I::Event>>
+pub fn wayland_event_chan<I>(obj: &Main<I>) -> mpsc::UnboundedReceiver<I::Event>
 where
     I: Interface + AsRef<Proxy<I>> + From<Proxy<I>> + Sync,
     I::Event: MessageGroup<Map = ProxyMap>,
 {
     let (tx, rx) = mpsc::unbounded();
     obj.quick_assign(move |_, event, _| {
-        tx.unbounded_send(Arc::new(event)).unwrap();
+        tx.unbounded_send(event).unwrap();
     });
     rx
 }

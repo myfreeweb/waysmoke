@@ -165,18 +165,18 @@ impl Wallpaper {
         self.render();
     }
 
-    async fn on_layer_event(&mut self, event: Arc<layer_surface::Event>) {
-        match &*event {
+    async fn on_layer_event(&mut self, event: layer_surface::Event) {
+        match event {
             layer_surface::Event::Configure {
-                ref serial,
-                ref width,
-                ref height,
+                serial,
+                width,
+                height,
             } => {
-                self.parent.layer_surface.ack_configure(*serial);
+                self.parent.layer_surface.ack_configure(serial);
 
                 self.scale = get_surface_scale_factor(&self.parent.wl_surface);
-                self.width = *width;
-                self.height = *height;
+                self.width = width;
+                self.height = height;
                 self.create_swap_chain();
                 self.render();
             }
