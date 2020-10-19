@@ -37,7 +37,6 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
         dock::Dock::new(dock::DockCtx {
             seat,
             toplevel_updates,
-            power,
             power_updates,
         }),
         env.clone(),

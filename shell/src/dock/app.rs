@@ -13,6 +13,7 @@ pub struct AppDocklet {
     pub evl: addeventlistener::State,
     pub toplevels_scrollable: iced_native::scrollable::State,
     pub toplevels_buttons: Vec<iced_native::button::State>,
+    pub seat: wl_seat::WlSeat,
     pub rx: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
@@ -22,6 +23,7 @@ pub struct AppDocklet {
 impl AppDocklet {
     pub fn new(
         app: apps::App,
+        seat: wl_seat::WlSeat,
         rx: wstk::bus::Subscriber<
             HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
         >,
@@ -37,6 +39,7 @@ impl AppDocklet {
             evl: Default::default(),
             toplevels_scrollable: Default::default(),
             toplevels_buttons: Default::default(),
+            seat,
             rx,
             our_toplevels: HashMap::new(),
         }
@@ -48,11 +51,12 @@ impl AppDocklet {
 
     pub fn from_id(
         id: &str,
+        seat: wl_seat::WlSeat,
         rx: wstk::bus::Subscriber<
             HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
         >,
     ) -> Option<AppDocklet> {
-        apps::App::lookup(id).map(|a| AppDocklet::new(a, rx))
+        apps::App::lookup(id).map(|a| AppDocklet::new(a, seat, rx))
     }
 }
 
@@ -136,7 +140,7 @@ impl Docklet for AppDocklet {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
                 for topl in self.our_toplevels.values() {
-                    topl.handle.activate(&ctx.seat);
+                    topl.handle.activate(&self.seat);
                     return;
                 }
                 self.app
@@ -150,7 +154,7 @@ impl Docklet for AppDocklet {
                     .nth(topli)
                     .unwrap()
                     .handle
-                    .activate(&ctx.seat);
+                    .activate(&self.seat);
             }
             _ => (),
         }

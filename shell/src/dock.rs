@@ -117,7 +117,6 @@ pub struct DockCtx {
     pub toplevel_updates: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
-    pub power: svc::power::PowerService,
     pub power_updates: wstk::bus::Subscriber<svc::power::PowerState>,
 }
 
@@ -165,7 +164,11 @@ impl Dock {
 
         for id in docked.iter() {
             if self.apps.iter().find(|a| a.id() == *id).is_none() {
-                if let Some(app) = app::AppDocklet::from_id(id, self.ctx.toplevel_updates.clone()) {
+                if let Some(app) = app::AppDocklet::from_id(
+                    id,
+                    self.ctx.seat.clone(),
+                    self.ctx.toplevel_updates.clone(),
+                ) {
                     self.apps.push(app);
                 }
             }
@@ -173,14 +176,20 @@ impl Dock {
 
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
-                if let Some(app) =
-                    app::AppDocklet::from_id(&topl.app_id, self.ctx.toplevel_updates.clone())
-                        .or_else(|| {
-                            topl.gtk_app_id.as_ref().and_then(|gid| {
-                                app::AppDocklet::from_id(&gid, self.ctx.toplevel_updates.clone())
-                            })
-                        })
-                {
+                if let Some(app) = app::AppDocklet::from_id(
+                    &topl.app_id,
+                    self.ctx.seat.clone(),
+                    self.ctx.toplevel_updates.clone(),
+                )
+                .or_else(|| {
+                    topl.gtk_app_id.as_ref().and_then(|gid| {
+                        app::AppDocklet::from_id(
+                            &gid,
+                            self.ctx.seat.clone(),
+                            self.ctx.toplevel_updates.clone(),
+                        )
+                    })
+                }) {
                     self.apps.push(app);
                 }
             }
