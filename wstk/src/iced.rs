@@ -21,15 +21,13 @@ pub type Element<'a, Message> = iced_native::Element<'a, Message, iced_wgpu::Ren
 #[async_trait(?Send)]
 pub trait IcedSurface {
     type Message: std::fmt::Debug + Send;
-    type ExternalEvent: Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
     fn input_region(&self, width: i32, height: i32) -> Option<Vec<Rectangle<i32>>>;
     fn retained_images(&mut self) -> Vec<ImageHandle>;
 
     async fn update(&mut self, message: Self::Message);
-    async fn react(&mut self, event: Self::ExternalEvent);
-    // TODO: ExternalEvent | IcedEvent | LshEvent
+    async fn run(&mut self) -> bool;
 
     async fn on_pointer_enter(&mut self) {}
     async fn on_pointer_leave(&mut self) {}
@@ -362,7 +360,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 
-    pub async fn run(&mut self, ext_evt_src: &mut (impl Stream<Item = T::ExternalEvent> + Unpin)) {
+    pub async fn run(&mut self) {
         let seat = &self.parent.env.get_all_seats()[0];
         let mut layer_events = wayland_event_chan(&self.parent.layer_surface);
         // TODO: react to seat caps change
@@ -389,8 +387,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
                 ev = touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
                 sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
-                ev = ext_evt_src.next().fuse() => if let Some(event) = ev {
-                    self.surface.react(event).await;
+                up = self.surface.run().fuse() => if up == true {
                     self.parent.flush();
                     self.render().await
                 },

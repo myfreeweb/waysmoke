@@ -1,4 +1,5 @@
 use crate::{style, svc, util::*};
+use futures::prelude::*;
 use gio::{AppInfoExt, DesktopAppInfoExt};
 use std::collections::HashMap;
 use wstk::*;
@@ -109,16 +110,14 @@ fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
 }
 
 #[derive(Clone)]
-pub enum Evt {
-    ToplevelsChanged(HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>),
-    PowerChanged(svc::power::PowerState),
-}
-
-#[derive(Clone)]
 pub struct DockCtx {
     pub seat: wl_seat::WlSeat,
     pub toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+    pub toplevel_updates: wstk::bus::Subscriber<
+        HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+    >,
     pub power: svc::power::PowerService,
+    pub power_updates: wstk::bus::Subscriber<svc::power::PowerState>,
 }
 
 pub struct Dock {
@@ -234,7 +233,6 @@ impl DesktopSurface for Dock {
 #[async_trait(?Send)]
 impl IcedSurface for Dock {
     type Message = Msg;
-    type ExternalEvent = Evt;
 
     fn view(&mut self) -> Element<Self::Message> {
         use iced_native::*;
@@ -366,11 +364,13 @@ impl IcedSurface for Dock {
         }
     }
 
-    async fn react(&mut self, event: Self::ExternalEvent) {
-        match event {
-            Evt::ToplevelsChanged(t) => self.update_apps(t),
-            Evt::PowerChanged(p) => self.power.update(p),
+    async fn run(&mut self) -> bool {
+        let mut sf = self; /* async-trait has bugs with this, causing E0434 */
+        futures::select! {
+            t = sf.ctx.toplevel_updates.next().fuse() => if let Some(tt) = t { sf.update_apps((*tt).clone()) },
+            p = sf.ctx.power_updates.next().fuse() => if let Some(pp) = p { sf.power.update((*pp).clone()) },
         }
+        true
     }
 
     async fn on_pointer_enter(&mut self) {

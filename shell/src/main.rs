@@ -1,4 +1,3 @@
-use futures::stream::select as add_stream;
 use iced_native::*;
 use wstk::*;
 
@@ -33,17 +32,14 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
 
     let (power, power_updates) = svc::power::PowerService::new().await;
 
-    let mut dock_evts = add_stream(
-        toplevel_updates.map(|ts| dock::Evt::ToplevelsChanged((*ts).clone())),
-        power_updates.map(|ps| dock::Evt::PowerChanged((*ps).clone())),
-    );
-
     let seat = env.get_all_seats()[0].detach();
     let mut dock = IcedInstance::new(
         dock::Dock::new(dock::DockCtx {
             seat,
             toplevels: std::collections::HashMap::new(),
+            toplevel_updates,
             power,
+            power_updates,
         }),
         env.clone(),
         display.clone(),
@@ -53,7 +49,7 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
 
     let mut wallpaper = wallpaper::Wallpaper::new(env.clone(), display.clone(), queue).await;
 
-    futures::join!(dock.run(&mut dock_evts), wallpaper.run());
+    futures::join!(dock.run(), wallpaper.run());
 }
 
 wstk_main!(main_);
