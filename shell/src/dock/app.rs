@@ -1,4 +1,5 @@
 use crate::{dock::*, style};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub enum Msg {
@@ -17,7 +18,7 @@ pub struct AppDocklet {
     pub rx: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
-    pub our_toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
+    pub toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
 }
 
 impl AppDocklet {
@@ -41,7 +42,7 @@ impl AppDocklet {
             toplevels_buttons: Default::default(),
             seat,
             rx,
-            our_toplevels: HashMap::new(),
+            toplevels: Arc::new(HashMap::new()),
         }
     }
 
@@ -65,7 +66,7 @@ impl Docklet for AppDocklet {
     fn widget(&mut self) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let running = !self.our_toplevels.is_empty();
+        let running = our_toplevels(&self.toplevels, self.id()).next().is_some();
 
         let big_button = Button::new(&mut self.button, icons::icon_widget(self.icon.clone()))
             .style(style::Dock(style::DARK_COLOR))
@@ -99,12 +100,12 @@ impl Docklet for AppDocklet {
         use iced_native::*;
 
         let appid = &self.app.id;
-        while self.toplevels_buttons.len() < self.our_toplevels.values().len() {
+        while self.toplevels_buttons.len() < our_toplevels(&self.toplevels, &self.app.id).count() {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
         // ugh, fold results in closure lifetime issues
-        for (i, topl) in self.our_toplevels.values().enumerate() {
+        for (i, topl) in our_toplevels(&self.toplevels, &self.app.id).enumerate() {
             btns = btns.push(
                 Button::new(
                     // and even here it complains about "multiple" borrows of self.toplevels_buttons >_<
@@ -139,7 +140,7 @@ impl Docklet for AppDocklet {
     fn update(&mut self, msg: DockletMsg) {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
-                for topl in self.our_toplevels.values() {
+                for topl in our_toplevels(&self.toplevels, &self.app.id) {
                     topl.handle.activate(&self.seat);
                     return;
                 }
@@ -149,8 +150,7 @@ impl Docklet for AppDocklet {
                     .unwrap()
             }
             DockletMsg::App(Msg::ActivateToplevel(topli)) => {
-                self.our_toplevels
-                    .values()
+                our_toplevels(&self.toplevels, &self.app.id)
                     .nth(topli)
                     .unwrap()
                     .handle
@@ -161,11 +161,15 @@ impl Docklet for AppDocklet {
     }
 
     async fn run(&mut self) {
-        let toplevels = self.rx.next().await.unwrap();
-        self.our_toplevels = toplevels
-            .iter()
-            .filter(|(_, topl)| topl.matches_id(self.id()))
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
+        self.toplevels = self.rx.next().await.unwrap();
     }
+}
+
+// can't just have a method on self because rustc can't see through
+// the function boundary to know which parts of self are actually borrowed
+fn our_toplevels<'a>(
+    toplevels: &'a Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
+    id: &'a str,
+) -> impl Iterator<Item = &'a wstk::toplevels::ToplevelState> {
+    toplevels.values().filter(move |topl| topl.matches_id(id))
 }
