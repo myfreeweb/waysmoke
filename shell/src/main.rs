@@ -5,7 +5,6 @@ mod dock;
 mod style;
 mod svc;
 mod util;
-mod wallpaper;
 
 async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     // TODO: multi-monitor handling
@@ -45,9 +44,7 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     )
     .await;
 
-    let mut wallpaper = wallpaper::Wallpaper::new(env.clone(), display.clone(), queue).await;
-
-    futures::join!(dock.run(), wallpaper.run());
+    futures::join!(dock.run());
 }
 
 wstk_main!(main_);
