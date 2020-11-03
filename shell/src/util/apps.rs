@@ -4,7 +4,7 @@ use std::path::Path;
 
 lazy_static::lazy_static! {
     static ref USERPATH: String =
-        glib::get_user_data_dir().unwrap().join("icons").to_str().unwrap().to_owned();
+        glib::get_user_data_dir().join("icons").to_str().unwrap().to_owned();
     static ref PATHS: Vec<&'static str> = vec![
         // linicon doesn't have the XDG_DATA_DIRS fallback paths from the spec
         "/usr/local/share/icons", "/usr/share/icons",

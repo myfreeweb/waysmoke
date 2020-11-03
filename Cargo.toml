@@ -14,12 +14,12 @@ panic = "abort"
 
 [patch.crates-io]
 
-wayland-client    = { git = "https://github.com/myfreeweb/wayland-rs", branch = "update-wlr" }
-wayland-cursor    = { git = "https://github.com/myfreeweb/wayland-rs", branch = "update-wlr" }
-wayland-sys       = { git = "https://github.com/myfreeweb/wayland-rs", branch = "update-wlr" }
-wayland-scanner   = { git = "https://github.com/myfreeweb/wayland-rs", branch = "update-wlr" }
-wayland-protocols = { git = "https://github.com/myfreeweb/wayland-rs", branch = "update-wlr" }
-wayland-commons   = { git = "https://github.com/myfreeweb/wayland-rs", branch = "update-wlr" }
+wayland-client    = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-cursor    = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-sys       = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-scanner   = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
+wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
 
 gio  = { git = "https://github.com/gtk-rs/gio" }
 gio-sys = { git = "https://github.com/gtk-rs/sys" }
