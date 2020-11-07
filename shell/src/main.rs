@@ -29,7 +29,7 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
 
     let toplevel_updates = env.with_inner(|i| i.toplevel_updates());
 
-    let (power, power_updates) = svc::power::PowerService::new().await;
+    let (_power, power_updates) = svc::power::PowerService::new().await;
 
     let seat = env.get_all_seats()[0].detach();
     let mut dock = IcedInstance::new(

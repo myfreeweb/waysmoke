@@ -42,7 +42,7 @@ impl Docklet for PowerDocklet {
         Some(self.icon.clone())
     }
 
-    fn update(&mut self, msg: DockletMsg) {}
+    fn update(&mut self, _msg: DockletMsg) {}
 
     async fn run(&mut self) {
         let st = self.rx.next().await.unwrap();

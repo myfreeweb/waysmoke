@@ -3,7 +3,7 @@ pub use iced_native::Rectangle;
 use iced_native::{mouse, Cache, Damage, Point, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
-use std::{marker::Unpin, pin::Pin, sync::Arc, time::Duration};
+use std::{pin::Pin, time::Duration};
 
 pub use async_trait::async_trait;
 pub use futures::prelude::*;

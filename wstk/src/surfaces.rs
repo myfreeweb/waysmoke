@@ -67,7 +67,7 @@ impl DesktopInstance {
         surface: &dyn DesktopSurface,
         env: Environment<Env>,
         display: Display,
-        queue: &EventQueue,
+        _queue: &EventQueue,
     ) -> DesktopInstance {
         let theme_mgr = pointer::ThemeManager::init(
             pointer::ThemeSpec::System, // XCURSOR_THEME XCURSOR_SIZE env vars

@@ -99,7 +99,6 @@ impl Docklet for AppDocklet {
     fn popover(&mut self) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
-        let appid = &self.app.id;
         while self.toplevels_buttons.len() < our_toplevels(&self.toplevels, &self.app.id).count() {
             self.toplevels_buttons.push(Default::default());
         }
