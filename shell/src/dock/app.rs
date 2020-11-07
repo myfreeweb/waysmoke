@@ -96,7 +96,7 @@ impl Docklet for AppDocklet {
         Some(self.icon.clone())
     }
 
-    fn overhang(&mut self) -> Option<Element<DockletMsg>> {
+    fn popover(&mut self) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
         let appid = &self.app.id;

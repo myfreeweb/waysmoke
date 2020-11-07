@@ -9,7 +9,7 @@ lazy_static::lazy_static! {
         icons::icon_from_path(apps::icon("application-x-executable"));
 }
 
-pub const OVERHANG_HEIGHT_MAX: u16 = 420;
+pub const POPOVER_HEIGHT_MAX: u16 = 420;
 pub const TOPLEVELS_WIDTH: u16 = 290;
 pub const APP_PADDING: u16 = 4;
 pub const DOCK_PADDING: u16 = 4;
@@ -36,7 +36,7 @@ pub trait Docklet {
     fn retained_icon(&self) -> Option<wstk::ImageHandle> {
         None
     }
-    fn overhang(&mut self) -> Option<Element<DockletMsg>> {
+    fn popover(&mut self) -> Option<Element<DockletMsg>> {
         None
     }
     fn update(&mut self, msg: DockletMsg);
@@ -46,10 +46,10 @@ pub trait Docklet {
 mod app;
 mod power;
 
-fn overhang<'a>(
+fn popover<'a>(
     icon_offset: i16,
     content: Element<'a, Msg>,
-    overhang_region: &'a Cell<Rectangle>,
+    popover_region: &'a Cell<Rectangle>,
 ) -> Element<'a, Msg> {
     use iced_graphics::{
         triangle::{Mesh2D, Vertex2D},
@@ -86,7 +86,7 @@ fn overhang<'a>(
     .height(Length::Units(8));
 
     let content_col = GetRegion::new(
-        overhang_region,
+        popover_region,
         Column::new()
             .align_items(Align::Center)
             .push(content_box)
@@ -111,7 +111,7 @@ fn overhang<'a>(
     }
     Container::new(offset_row)
         .width(Length::Fill)
-        .height(Length::Units(OVERHANG_HEIGHT_MAX))
+        .height(Length::Units(POPOVER_HEIGHT_MAX))
         .center_x()
         .align_y(Align::End)
         .into()
@@ -136,7 +136,7 @@ pub struct Dock {
     >,
 
     dock_region: Cell<Rectangle>,
-    overhang_region: Cell<Rectangle>,
+    popover_region: Cell<Rectangle>,
 
     apps: Vec<app::AppDocklet>,
     power: power::PowerDocklet,
@@ -153,7 +153,7 @@ impl Dock {
             hovered_docklet: None,
             toplevel_updates,
             dock_region: Default::default(),
-            overhang_region: Default::default(),
+            popover_region: Default::default(),
             apps: Vec::new(),
             power,
         }
@@ -253,7 +253,7 @@ impl DesktopSurface for Dock {
         );
         layer_surface.set_size(
             0,
-            (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT_MAX) as _,
+            (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT + POPOVER_HEIGHT_MAX) as _,
         );
         layer_surface.set_exclusive_zone(BAR_HEIGHT as _);
     }
@@ -274,13 +274,13 @@ impl IcedSurface for Dock {
             let our_center = self.center_of_docklet(appi);
             let docklet = self.docklets().nth(appi).unwrap();
             if let Some(oh) =
-                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.overhang()
+                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.popover()
             {
                 let i = oh.map(move |m| Msg::IdxMsg(appi, m)).into();
-                col = col.push(overhang(
+                col = col.push(popover(
                     (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
                     i,
-                    &self.overhang_region,
+                    &self.popover_region,
                 ));
                 has_oh = true;
             }
@@ -289,7 +289,7 @@ impl IcedSurface for Dock {
             self.popover_region.set(Default::default()); // probably not the best way to clear input region but w/e
             col = col.push(
                 prim::Prim::new(iced_graphics::Primitive::None)
-                    .height(Length::Units(OVERHANG_HEIGHT_MAX)),
+                    .height(Length::Units(POPOVER_HEIGHT_MAX)),
             );
         }
 
@@ -368,7 +368,7 @@ impl IcedSurface for Dock {
         }
         let bar = Rectangle {
             x: 0,
-            y: (DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT_MAX) as _,
+            y: (DOCK_AND_GAP_HEIGHT + POPOVER_HEIGHT_MAX) as _,
             width,
             height: BAR_HEIGHT as _,
         };
@@ -376,7 +376,7 @@ impl IcedSurface for Dock {
         if self.is_pointed || self.is_touched {
             result.push(pad(self.dock_region.get().snap(), 12));
             if self.hovered_docklet().is_some() {
-                result.push(pad(self.overhang_region.get().snap(), 6));
+                result.push(pad(self.popover_region.get().snap(), 6));
             }
         }
         Some(result)
