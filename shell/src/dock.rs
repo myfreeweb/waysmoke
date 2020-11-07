@@ -1,7 +1,7 @@
 use crate::{style, svc, util::*};
 use futures::prelude::*;
 use gio::{AppInfoExt, DesktopAppInfoExt};
-use std::collections::HashMap;
+use std::{cell::Cell, collections::HashMap};
 use wstk::*;
 
 lazy_static::lazy_static! {
@@ -46,7 +46,11 @@ pub trait Docklet {
 mod app;
 mod power;
 
-fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
+fn overhang<'a>(
+    icon_offset: i16,
+    content: Element<'a, Msg>,
+    overhang_region: &'a Cell<Rectangle>,
+) -> Element<'a, Msg> {
     use iced_graphics::{
         triangle::{Mesh2D, Vertex2D},
         Primitive,
@@ -81,11 +85,13 @@ fn overhang(icon_offset: i16, content: Element<Msg>) -> Element<Msg> {
     .width(Length::Units(16))
     .height(Length::Units(8));
 
-    let content_col = Column::new()
-        .align_items(Align::Center)
-        .width(Length::Shrink)
-        .push(content_box)
-        .push(triangle);
+    let content_col = GetRegion::new(
+        overhang_region,
+        Column::new()
+            .align_items(Align::Center)
+            .push(content_box)
+            .push(triangle),
+    );
 
     let mut offset_row = Row::new().height(Length::Shrink);
     if icon_offset < 0 {
@@ -129,6 +135,9 @@ pub struct Dock {
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
 
+    dock_region: Cell<Rectangle>,
+    overhang_region: Cell<Rectangle>,
+
     apps: Vec<app::AppDocklet>,
     power: power::PowerDocklet,
 }
@@ -143,6 +152,8 @@ impl Dock {
             is_touched: false,
             hovered_docklet: None,
             toplevel_updates,
+            dock_region: Default::default(),
+            overhang_region: Default::default(),
             apps: Vec::new(),
             power,
         }
@@ -269,11 +280,13 @@ impl IcedSurface for Dock {
                 col = col.push(overhang(
                     (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
                     i,
+                    &self.overhang_region,
                 ));
                 has_oh = true;
             }
         }
         if !has_oh {
+            self.popover_region.set(Default::default()); // probably not the best way to clear input region but w/e
             col = col.push(
                 prim::Prim::new(iced_graphics::Primitive::None)
                     .height(Length::Units(OVERHANG_HEIGHT_MAX)),
@@ -294,13 +307,18 @@ impl IcedSurface for Dock {
             // TODO: show toplevels for unrecognized apps
 
             let dock = Container::new(
-                Container::new(row)
-                    .style(style::Dock(style::DARK_COLOR))
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-                    .center_x()
-                    .center_y()
-                    .padding(DOCK_PADDING),
+                GetRegion::new(
+                    &self.dock_region,
+                    Container::new(row)
+                        .style(style::Dock(style::DARK_COLOR))
+                        .width(Length::Shrink)
+                        .height(Length::Shrink)
+                        .center_x()
+                        .center_y()
+                        .padding(DOCK_PADDING),
+                )
+                .center_x()
+                .center_y(),
             )
             .width(Length::Fill)
             .height(Length::Units(DOCK_HEIGHT))
@@ -336,7 +354,18 @@ impl IcedSurface for Dock {
         col.push(bar).into()
     }
 
-    fn input_region(&self, width: i32, _height: i32) -> Option<Vec<Rectangle<i32>>> {
+    fn input_region(&self, width: u32, _height: u32) -> Option<Vec<Rectangle<u32>>> {
+        fn pad(rect: Rectangle<u32>, n: u32) -> Rectangle<u32> {
+            if rect.x < n || rect.y < n {
+                return rect;
+            }
+            Rectangle {
+                x: rect.x - n,
+                y: rect.y - n,
+                width: rect.width + n * 2,
+                height: rect.height + n * 2,
+            }
+        }
         let bar = Rectangle {
             x: 0,
             y: (DOCK_AND_GAP_HEIGHT + OVERHANG_HEIGHT_MAX) as _,
@@ -345,24 +374,10 @@ impl IcedSurface for Dock {
         };
         let mut result = vec![bar];
         if self.is_pointed || self.is_touched {
-            let dock_width = self.width() as _;
-            result.push(Rectangle {
-                x: (width - dock_width) / 2,
-                y: OVERHANG_HEIGHT_MAX as _,
-                width: dock_width,
-                height: (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT) as _,
-            });
-        }
-        if let Some(i) = self.hovered_docklet() {
-            let overhang_height = 200; // TODO: calc
-            let dock_width = self.width() as i32;
-            let our_center = self.center_of_docklet(i) as i32;
-            result.push(Rectangle {
-                x: (width - TOPLEVELS_WIDTH as i32) / 2 - (dock_width / 2 - our_center),
-                y: (OVERHANG_HEIGHT_MAX - overhang_height) as _,
-                width: TOPLEVELS_WIDTH as _,
-                height: overhang_height as _,
-            });
+            result.push(pad(self.dock_region.get().snap(), 12));
+            if self.hovered_docklet().is_some() {
+                result.push(pad(self.overhang_region.get().snap(), 6));
+            }
         }
         Some(result)
     }

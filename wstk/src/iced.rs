@@ -23,7 +23,7 @@ pub trait IcedSurface {
     type Message: std::fmt::Debug + Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
-    fn input_region(&self, width: i32, height: i32) -> Option<Vec<Rectangle<i32>>>;
+    fn input_region(&self, width: u32, height: u32) -> Option<Vec<Rectangle<u32>>>;
     fn retained_images(&mut self) -> Vec<ImageHandle>;
 
     async fn update(&mut self, message: Self::Message);
@@ -43,7 +43,7 @@ pub struct IcedInstance<T> {
     ptr_active: bool,
     scale: i32,
     leave_timeout: Option<future::Fuse<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
-    prev_input_region: Option<Vec<Rectangle<i32>>>,
+    prev_input_region: Option<Vec<Rectangle<u32>>>,
     touch_point: Option<i32>,
     touch_leave: bool,
 
@@ -102,12 +102,18 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     fn update_input_region(&mut self) {
         let reg = self
             .surface
-            .input_region(self.size.width as i32, self.size.height as i32);
+            .input_region(self.size.width as _, self.size.height as _);
         if reg != self.prev_input_region {
             if let Some(ref rects) = reg {
                 let wlreg = self.parent.create_region();
                 for rect in rects.iter() {
-                    wlreg.add(rect.x, rect.y, rect.width, rect.height);
+                    use std::convert::TryInto;
+                    wlreg.add(
+                        rect.x.try_into().unwrap(),
+                        rect.y.try_into().unwrap(),
+                        rect.width.try_into().unwrap(),
+                        rect.height.try_into().unwrap(),
+                    );
                 }
                 self.parent.set_input_region(wlreg);
             } else {
