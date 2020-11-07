@@ -6,7 +6,7 @@ use iced_wgpu::window::Compositor as WgpuCompositor;
 use std::{pin::Pin, time::Duration};
 
 pub use async_trait::async_trait;
-pub use futures::prelude::*;
+pub use futures::{channel::mpsc, prelude::*};
 
 use crate::{event_loop::*, surfaces::*};
 
@@ -48,6 +48,9 @@ pub struct IcedInstance<T> {
     touch_leave: bool,
     themed_ptr: Option<pointer::ThemedPointer>,
     last_ptr_serial: Option<u32>,
+    layer_events: mpsc::UnboundedReceiver<layer_surface::Event>,
+    ptr_events: mpsc::UnboundedReceiver<wl_pointer::Event>,
+    touch_events: mpsc::UnboundedReceiver<wl_touch::Event>,
 
     // iced render state
     cache: Cache,
@@ -81,6 +84,22 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         parent.wl_surface.commit();
         parent.flush();
 
+        let seat = &parent.env.get_all_seats()[0];
+        let layer_events = wayland_event_chan(&parent.layer_surface);
+        let (ptr_events, themed_ptr) = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
+            (
+                wayland_event_chan(&seat.get_pointer()),
+                Some(parent.theme_mgr.theme_pointer(seat.get_pointer().detach())),
+            )
+        } else {
+            (futures::channel::mpsc::unbounded().1, None)
+        };
+        let touch_events = if with_seat_data(seat, |d| d.has_touch).unwrap() {
+            wayland_event_chan(&seat.get_touch())
+        } else {
+            futures::channel::mpsc::unbounded().1
+        };
+
         IcedInstance {
             parent,
             surface,
@@ -90,8 +109,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             prev_input_region: None,
             touch_point: None,
             touch_leave: false,
-            themed_ptr: None,
+            themed_ptr,
             last_ptr_serial: None,
+            layer_events,
+            ptr_events,
+            touch_events,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             cursor_position: Point::default(),
@@ -439,25 +461,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     }
 
     pub async fn run(&mut self) {
-        let seat = &self.parent.env.get_all_seats()[0];
-        let mut layer_events = wayland_event_chan(&self.parent.layer_surface);
         // TODO: react to seat caps change
-        let mut ptr_events = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
-            self.themed_ptr = Some(
-                self.parent
-                    .theme_mgr
-                    .theme_pointer(seat.get_pointer().detach()),
-            );
-            wayland_event_chan(&seat.get_pointer())
-        } else {
-            futures::channel::mpsc::unbounded().1
-        };
-        let mut touch_events = if with_seat_data(seat, |d| d.has_touch).unwrap() {
-            wayland_event_chan(&seat.get_touch())
-        } else {
-            futures::channel::mpsc::unbounded().1
-        };
-
         loop {
             let leave_timeout_existed = self.leave_timeout.is_some();
             let mut leave_timeout = self
@@ -466,9 +470,9 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
             // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
             futures::select! {
-                ev = layer_events.next() => if let Some(event) = ev { if !self.on_layer_event(event).await { return } },
-                ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
-                ev = touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
+                ev = self.layer_events.next() => if let Some(event) = ev { if !self.on_layer_event(event).await { return } },
+                ev = self.ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
+                ev = self.touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
                 sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
                 up = self.surface.run().fuse() => if up == true {
                     self.parent.flush();
