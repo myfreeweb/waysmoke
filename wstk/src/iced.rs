@@ -486,3 +486,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 }
+
+impl<T> Drop for IcedInstance<T> {
+    fn drop(&mut self) {
+        if let Some(ref tptr) = self.themed_ptr {
+            tptr.release();
+        }
+    }
+}

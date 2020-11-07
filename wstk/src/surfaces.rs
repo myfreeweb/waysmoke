@@ -131,3 +131,10 @@ impl DesktopInstance {
         self.wl_surface.set_input_region(None);
     }
 }
+
+impl Drop for DesktopInstance {
+    fn drop(&mut self) {
+        self.layer_surface.destroy();
+        self.wl_surface.destroy();
+    }
+}
