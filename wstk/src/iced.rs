@@ -59,6 +59,7 @@ pub struct IcedInstance<T> {
     swap_chain: Option<<WgpuCompositor as Compositor>::SwapChain>,
     prev_prim: iced_graphics::Primitive,
     queue: Vec<iced_native::Event>,
+    last_mouse_interaction: mouse::Interaction,
 }
 
 impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
@@ -100,6 +101,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             swap_chain: None,
             prev_prim: iced_graphics::Primitive::None,
             queue: Vec::new(),
+            last_mouse_interaction: mouse::Interaction::Idle,
         }
     }
 
@@ -128,7 +130,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         self.prev_input_region = reg;
     }
 
-    fn apply_mouse_interaction(&self, interaction: mouse::Interaction) {
+    fn apply_mouse_interaction(&mut self, interaction: mouse::Interaction) {
         if let Some(ref tptr) = self.themed_ptr {
             use iced_native::mouse::Interaction::*;
             let _ = tptr.set_cursor(
@@ -145,6 +147,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 },
                 self.last_ptr_serial,
             );
+            self.last_mouse_interaction = interaction;
         }
     }
 
@@ -291,6 +294,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.leave_timeout = None;
                 self.surface.on_pointer_enter().await;
                 self.last_ptr_serial = Some(serial);
+                self.apply_mouse_interaction(self.last_mouse_interaction);
             }
             wl_pointer::Event::Leave {
                 surface, serial, ..
