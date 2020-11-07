@@ -5,7 +5,7 @@ mod style;
 mod svc;
 mod util;
 
-async fn main_(env: Environment<Env>, display: Display, _queue: &EventQueue) {
+async fn main_(env: &Environment<Env>, display: &Display) {
     // let app = gio::Application::new(
     //     Some("technology.unrelenting.waysmoke.Shell"),
     //     gio::ApplicationFlags::default(),

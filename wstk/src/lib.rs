@@ -34,18 +34,15 @@ pub use bus_queue::flavors::arc_swap as bus;
 #[macro_export]
 macro_rules! wstk_main {
     ( $fun:ident ) => {
-        static mut LOL: Option<EventQueue> = None;
-
         fn main() -> Result<(), Box<dyn std::error::Error>> {
             let main = glib::MainLoop::new(None, false);
             glib::MainContext::default().acquire();
             let (env, disp, queue) = make_env()?;
-            let queue = unsafe {
-                LOL = Some(queue);
-                glib_add_wayland(LOL.as_mut().unwrap());
-                LOL.as_ref().unwrap()
-            };
-            glib::MainContext::default().spawn_local($fun(env, disp, queue));
+            let env: &'static Environment<Env> = Box::leak(Box::new(env));
+            let disp: &'static Display = Box::leak(Box::new(disp));
+            let queue: &'static mut EventQueue = Box::leak(Box::new(queue));
+            glib_add_wayland(queue);
+            glib::MainContext::default().spawn_local($fun(env, disp));
             main.run();
             Ok(())
         }
