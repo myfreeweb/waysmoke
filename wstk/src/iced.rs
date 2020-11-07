@@ -460,34 +460,33 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(&mut self) -> bool {
         // TODO: react to seat caps change
-        loop {
-            let leave_timeout_existed = self.leave_timeout.is_some();
-            let mut leave_timeout = self
-                .leave_timeout
-                .take()
-                .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
-            // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
-            futures::select! {
-                ev = self.layer_events.next() => if let Some(event) = ev { if !self.on_layer_event(event).await { return } },
-                ev = self.ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
-                ev = self.touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
-                sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
-                up = self.surface.run().fuse() => if up == true {
-                    self.parent.flush();
-                    self.render().await
-                },
-                () = leave_timeout => {
-                    self.surface.on_pointer_leave().await;
-                    // not getting a pointer frame after the timeout ;)
-                    self.render().await;
-                },
-            }
-            if leave_timeout_existed && !self.ptr_active {
-                self.leave_timeout = Some(leave_timeout);
-            }
+        let leave_timeout_existed = self.leave_timeout.is_some();
+        let mut leave_timeout = self
+            .leave_timeout
+            .take()
+            .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
+        // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
+        futures::select! {
+            ev = self.layer_events.next() => if let Some(event) = ev { if !self.on_layer_event(event).await { return false } },
+            ev = self.ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
+            ev = self.touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
+            sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
+            up = self.surface.run().fuse() => if up == true {
+                self.parent.flush();
+                self.render().await
+            },
+            () = leave_timeout => {
+                self.surface.on_pointer_leave().await;
+                // not getting a pointer frame after the timeout ;)
+                self.render().await;
+            },
         }
+        if leave_timeout_existed && !self.ptr_active {
+            self.leave_timeout = Some(leave_timeout);
+        }
+        true
     }
 }
 

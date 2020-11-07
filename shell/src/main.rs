@@ -44,7 +44,7 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     )
     .await;
 
-    futures::join!(dock.run());
+    while dock.run().await {}
 }
 
 wstk_main!(main_);
