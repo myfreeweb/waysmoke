@@ -4,7 +4,9 @@ pub use smithay_client_toolkit::{
     get_surface_scale_factor,
     reexports::{
         client::{
-            protocol::{wl_compositor, wl_pointer, wl_region, wl_seat, wl_surface, wl_touch},
+            protocol::{
+                wl_compositor, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface, wl_touch,
+            },
             Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
         },
         protocols::wlr::unstable::foreign_toplevel::v1::client::{
@@ -15,7 +17,7 @@ pub use smithay_client_toolkit::{
             zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
         },
     },
-    seat::with_seat_data,
+    seat::{pointer, with_seat_data},
 };
 
 use futures::channel::mpsc;
@@ -54,6 +56,7 @@ pub trait DesktopSurface {
 pub struct DesktopInstance {
     pub env: Environment<Env>,
     pub display: Display,
+    pub theme_mgr: pointer::ThemeManager,
     pub wl_surface: Attached<wl_surface::WlSurface>,
     pub layer_surface: Main<layer_surface::ZwlrLayerSurfaceV1>,
     pub scale_rx: mpsc::UnboundedReceiver<i32>,
@@ -66,6 +69,11 @@ impl DesktopInstance {
         display: Display,
         queue: &EventQueue,
     ) -> DesktopInstance {
+        let theme_mgr = pointer::ThemeManager::init(
+            pointer::ThemeSpec::System, // XCURSOR_THEME XCURSOR_SIZE env vars
+            env.require_global::<wl_compositor::WlCompositor>(),
+            env.require_global::<wl_shm::WlShm>(),
+        );
         let layer_shell = env.require_global::<layer_shell::ZwlrLayerShellV1>();
 
         let (scale_tx, scale_rx) = mpsc::unbounded();
@@ -94,6 +102,7 @@ impl DesktopInstance {
         DesktopInstance {
             env,
             display,
+            theme_mgr,
             wl_surface,
             layer_surface,
             scale_rx,

@@ -46,6 +46,8 @@ pub struct IcedInstance<T> {
     prev_input_region: Option<Vec<Rectangle<u32>>>,
     touch_point: Option<i32>,
     touch_leave: bool,
+    themed_ptr: Option<pointer::ThemedPointer>,
+    last_ptr_serial: Option<u32>,
 
     // iced render state
     cache: Cache,
@@ -87,6 +89,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             prev_input_region: None,
             touch_point: None,
             touch_leave: false,
+            themed_ptr: None,
+            last_ptr_serial: None,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             cursor_position: Point::default(),
@@ -168,7 +172,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.update_input_region();
                 return;
             }
-            let _new_mouse_cursor = self.compositor.draw::<String>(
+            let new_mouse_cursor = self.compositor.draw::<String>(
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
@@ -176,6 +180,23 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 &(primitive, mi),
                 &[],
             );
+            if let Some(ref tptr) = self.themed_ptr {
+                use iced_native::mouse::Interaction::*;
+                let _ = tptr.set_cursor(
+                    match new_mouse_cursor {
+                        Idle => "default",
+                        Pointer => "pointer",
+                        Grab => "dnd-ask",
+                        Text => "text",
+                        Crosshair => "cross",
+                        Working => "wait",
+                        Grabbing => "dnd-move",
+                        ResizingHorizontally => "col-resize",
+                        ResizingVertically => "row-resize",
+                    },
+                    self.last_ptr_serial,
+                );
+            }
             self.cache = user_interface.into_cache();
         } else {
             // iced-winit says we are forced to rebuild twice
@@ -250,22 +271,33 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn on_pointer_event(&mut self, event: wl_pointer::Event) {
         match event {
-            wl_pointer::Event::Enter { surface, .. } => {
+            wl_pointer::Event::Enter {
+                surface, serial, ..
+            } => {
                 if self.parent.wl_surface.detach() != surface {
                     return;
                 }
                 self.ptr_active = true;
                 self.leave_timeout = None;
                 self.surface.on_pointer_enter().await;
+                self.last_ptr_serial = Some(serial);
             }
-            wl_pointer::Event::Leave { surface, .. } => {
+            wl_pointer::Event::Leave {
+                surface, serial, ..
+            } => {
                 if self.parent.wl_surface.detach() != surface {
                     return;
                 }
                 self.ptr_active = false;
                 self.leave_timeout = Some(glib::timeout_future(Duration::from_millis(200)).fuse());
+                self.last_ptr_serial = Some(serial);
             }
-            wl_pointer::Event::Button { button, state, .. } => {
+            wl_pointer::Event::Button {
+                button,
+                state,
+                serial,
+                ..
+            } => {
                 if !self.ptr_active {
                     return;
                 }
@@ -281,6 +313,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                     wl_pointer::ButtonState::Released => mouse::Event::ButtonReleased(btn),
                     _ => panic!("new button state?"),
                 }));
+                self.last_ptr_serial = Some(serial);
             }
             wl_pointer::Event::Motion {
                 surface_x,
@@ -296,9 +329,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                         x: surface_x as _,
                         y: surface_y as _,
                     }));
+                self.last_ptr_serial = None;
             }
             wl_pointer::Event::Frame { .. } => {
                 self.render().await;
+                self.last_ptr_serial = None;
             }
             _ => {
                 eprintln!("unhandled pointer event");
@@ -371,6 +406,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         let mut layer_events = wayland_event_chan(&self.parent.layer_surface);
         // TODO: react to seat caps change
         let mut ptr_events = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
+            self.themed_ptr = Some(
+                self.parent
+                    .theme_mgr
+                    .theme_pointer(seat.get_pointer().detach()),
+            );
             wayland_event_chan(&seat.get_pointer())
         } else {
             futures::channel::mpsc::unbounded().1
