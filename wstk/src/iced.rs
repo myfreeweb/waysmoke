@@ -465,12 +465,9 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
     async fn run(&mut self) -> bool {
         // TODO: react to seat caps change
-        let leave_timeout_existed = self.leave_timeout.is_some();
-        let mut leave_timeout = self
-            .leave_timeout
-            .take()
-            .unwrap_or_else(|| future::Fuse::terminated());
         let this = self; // argh macro weirdness
+        let mut term = future::Fuse::terminated();
+        let mut leave_timeout = this.leave_timeout.as_mut().unwrap_or_else(|| &mut term);
         futures::select! {
             ev = this.layer_events.select_next_some() => if !this.on_layer_event(ev).await { return false },
             ev = this.ptr_events.select_next_some() => this.on_pointer_event(ev).await,
@@ -481,13 +478,11 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
                 this.render().await
             },
             () = leave_timeout => {
+                this.leave_timeout = None;
                 this.surface.on_pointer_leave().await;
                 // not getting a pointer frame after the timeout ;)
                 this.render().await;
             },
-        }
-        if leave_timeout_existed && !this.ptr_active {
-            this.leave_timeout = Some(leave_timeout);
         }
         true
     }
