@@ -331,6 +331,29 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                     }));
                 self.last_ptr_serial = None;
             }
+            wl_pointer::Event::Axis { axis, value, .. } => {
+                if !self.ptr_active {
+                    return;
+                }
+                self.queue
+                    .push(iced_native::Event::Mouse(mouse::Event::WheelScrolled {
+                        delta: mouse::ScrollDelta::Pixels {
+                            x: if axis == wl_pointer::Axis::HorizontalScroll {
+                                -value as _
+                            } else {
+                                0.0
+                            },
+                            y: if axis == wl_pointer::Axis::VerticalScroll {
+                                -value as _
+                            } else {
+                                0.0
+                            },
+                        },
+                    }));
+            }
+            wl_pointer::Event::AxisSource { .. } => {}
+            wl_pointer::Event::AxisStop { .. } => {}
+            wl_pointer::Event::AxisDiscrete { .. } => {}
             wl_pointer::Event::Frame { .. } => {
                 self.render().await;
                 self.last_ptr_serial = None;
