@@ -473,10 +473,10 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
         // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
         let this = self; // argh macro weirdness
         futures::select! {
-            ev = this.layer_events.next() => if let Some(event) = ev { if !this.on_layer_event(event).await { return false } },
-            ev = this.ptr_events.next() => if let Some(event) = ev { this.on_pointer_event(event).await },
-            ev = this.touch_events.next() => if let Some(event) = ev { this.on_touch_event(event).await },
-            sc = this.parent.scale_rx.next() => if let Some(scale) = sc { this.on_scale(scale).await },
+            ev = this.layer_events.select_next_some() => if !this.on_layer_event(ev).await { return false },
+            ev = this.ptr_events.select_next_some() => this.on_pointer_event(ev).await,
+            ev = this.touch_events.select_next_some() => this.on_touch_event(ev).await,
+            sc = this.parent.scale_rx.select_next_some() => this.on_scale(sc).await,
             up = this.surface.run().fuse() => if up == true {
                 this.parent.flush();
                 this.render().await

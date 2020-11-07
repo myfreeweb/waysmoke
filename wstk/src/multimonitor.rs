@@ -50,9 +50,9 @@ where
             .map(|(i, x)| x.run().map(move |res| (res, i)))
             .collect::<futures::stream::FuturesUnordered<_>>();
         futures::select! {
-            inst_res = run_instances.next() => {
+            inst_res = run_instances.select_next_some() => {
                 drop(run_instances);
-                let (cont, idx) = inst_res.unwrap();
+                let (cont, idx) = inst_res;
                 if !cont {
                     this.instances.remove(idx);
                     if this.instances.is_empty() {
@@ -60,11 +60,11 @@ where
                     }
                 }
             },
-            output = this.recv.next() => {
+            output = this.recv.select_next_some() => {
                 drop(run_instances);
                 this.instances.push(
                     (this.mk)(
-                        (*output.unwrap()).clone(),
+                        (*output).clone(),
                     )
                     .await,
                 );
