@@ -267,23 +267,23 @@ impl IcedSurface for Dock {
         let mut col = Column::new().width(Length::Fill);
 
         let dock_width = self.width();
-        let mut has_oh = false;
-        if let Some(appi) = self.hovered_docklet() {
-            let our_center = self.center_of_docklet(appi);
-            let docklet = self.docklets().nth(appi).unwrap();
+        let mut has_popover = false;
+        if let Some(docklet_idx) = self.hovered_docklet() {
+            let our_center = self.center_of_docklet(docklet_idx);
+            let docklet = self.docklets().nth(docklet_idx).unwrap();
             if let Some(oh) =
                 unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.popover()
             {
-                let i = oh.map(move |m| Msg::IdxMsg(appi, m)).into();
+                let i = oh.map(move |m| Msg::IdxMsg(docklet_idx, m)).into();
                 col = col.push(popover(
                     (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
                     i,
                     &self.popover_region,
                 ));
-                has_oh = true;
+                has_popover = true;
             }
         }
-        if !has_oh {
+        if !has_popover {
             self.popover_region.set(Default::default()); // probably not the best way to clear input region but w/e
             col = col.push(Space::with_height(Length::Units(POPOVER_HEIGHT_MAX)));
         }
