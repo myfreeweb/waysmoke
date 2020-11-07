@@ -469,8 +469,7 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
         let mut leave_timeout = self
             .leave_timeout
             .take()
-            .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
-        // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
+            .unwrap_or_else(|| future::Fuse::terminated());
         let this = self; // argh macro weirdness
         futures::select! {
             ev = this.layer_events.select_next_some() => if !this.on_layer_event(ev).await { return false },
