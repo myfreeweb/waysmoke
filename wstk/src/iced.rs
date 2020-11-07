@@ -128,6 +128,26 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         self.prev_input_region = reg;
     }
 
+    fn apply_mouse_interaction(&self, interaction: mouse::Interaction) {
+        if let Some(ref tptr) = self.themed_ptr {
+            use iced_native::mouse::Interaction::*;
+            let _ = tptr.set_cursor(
+                match interaction {
+                    Idle => "default",
+                    Pointer => "pointer",
+                    Grab => "dnd-ask",
+                    Text => "text",
+                    Crosshair => "cross",
+                    Working => "wait",
+                    Grabbing => "dnd-move",
+                    ResizingHorizontally => "col-resize",
+                    ResizingVertically => "row-resize",
+                },
+                self.last_ptr_serial,
+            );
+        }
+    }
+
     async fn render(&mut self) {
         if self.swap_chain.is_none() {
             eprintln!("WARN: render attempted without swapchain");
@@ -172,7 +192,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.update_input_region();
                 return;
             }
-            let new_mouse_cursor = self.compositor.draw::<String>(
+            let inter = self.compositor.draw::<String>(
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
@@ -180,24 +200,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 &(primitive, mi),
                 &[],
             );
-            if let Some(ref tptr) = self.themed_ptr {
-                use iced_native::mouse::Interaction::*;
-                let _ = tptr.set_cursor(
-                    match new_mouse_cursor {
-                        Idle => "default",
-                        Pointer => "pointer",
-                        Grab => "dnd-ask",
-                        Text => "text",
-                        Crosshair => "cross",
-                        Working => "wait",
-                        Grabbing => "dnd-move",
-                        ResizingHorizontally => "col-resize",
-                        ResizingVertically => "row-resize",
-                    },
-                    self.last_ptr_serial,
-                );
-            }
             self.cache = user_interface.into_cache();
+            self.apply_mouse_interaction(inter);
         } else {
             // iced-winit says we are forced to rebuild twice
             let temp_cache = user_interface.into_cache();
@@ -220,7 +224,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.cache = user_interface.into_cache();
                 return;
             }
-            let _new_mouse_cursor = self.compositor.draw::<String>(
+            let inter = self.compositor.draw::<String>(
                 &mut self.renderer,
                 swap_chain,
                 &viewport,
@@ -229,6 +233,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 &[],
             );
             self.cache = user_interface.into_cache();
+            self.apply_mouse_interaction(inter);
         }
         self.update_input_region();
     }
