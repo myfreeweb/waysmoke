@@ -95,19 +95,17 @@ fn popover<'a>(
 
     let mut offset_row = Row::new().height(Length::Shrink);
     if icon_offset < 0 {
-        offset_row = offset_row.push(
-            prim::Prim::new(Primitive::None)
-                .height(Length::Units(0))
-                .width(Length::Units(-icon_offset as _)),
-        );
+        offset_row = offset_row.push(Space::new(
+            Length::Units(-icon_offset as _),
+            Length::Units(0),
+        ));
     }
     offset_row = offset_row.push(content_col);
     if icon_offset > 0 {
-        offset_row = offset_row.push(
-            prim::Prim::new(Primitive::None)
-                .height(Length::Units(0))
-                .width(Length::Units(icon_offset as _)),
-        );
+        offset_row = offset_row.push(Space::new(
+            Length::Units(icon_offset as _),
+            Length::Units(0),
+        ));
     }
     Container::new(offset_row)
         .width(Length::Fill)
@@ -287,10 +285,7 @@ impl IcedSurface for Dock {
         }
         if !has_oh {
             self.popover_region.set(Default::default()); // probably not the best way to clear input region but w/e
-            col = col.push(
-                prim::Prim::new(iced_graphics::Primitive::None)
-                    .height(Length::Units(POPOVER_HEIGHT_MAX)),
-            );
+            col = col.push(Space::with_height(Length::Units(POPOVER_HEIGHT_MAX)));
         }
 
         if self.is_pointed || self.is_touched {
@@ -324,14 +319,11 @@ impl IcedSurface for Dock {
             .height(Length::Units(DOCK_HEIGHT))
             .center_x();
 
-            col = col.push(dock).push(
-                prim::Prim::new(iced_graphics::Primitive::None).height(Length::Units(DOCK_GAP)),
-            );
+            col = col
+                .push(dock)
+                .push(Space::with_height(Length::Units(DOCK_GAP)));
         } else {
-            col = col.push(
-                prim::Prim::new(iced_graphics::Primitive::None)
-                    .height(Length::Units(DOCK_AND_GAP_HEIGHT)),
-            );
+            col = col.push(Space::with_height(Length::Units(DOCK_AND_GAP_HEIGHT)));
         }
 
         let bar = Container::new(
