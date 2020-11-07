@@ -517,6 +517,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "euclid"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5337024b8293bdce5265dc9570ef6e608a34bfacbbc87fe1a5dcb5f1dac2f4e2"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "expat-sys"
 version = "2.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1025,11 +1034,11 @@ dependencies = [
 
 [[package]]
 name = "guillotiere"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47065d052e2f000066c4ffbea7051e55bff5c1532c400fc1e269492b2474ccc1"
+checksum = "bc7cccefbf418f663e11e9500326f46a44273dc598210bbedc8bbe95e696531f"
 dependencies = [
- "euclid",
+ "euclid 0.22.1",
  "svg_fmt",
 ]
 
@@ -1084,12 +1093,12 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.2.1"
-source = "git+https://github.com/myfreeweb/iced#310ddd1f6364dceb6991204a795c47d9279e61f4"
+source = "git+https://github.com/myfreeweb/iced#9d4a0603263ff64e09529df0679f503d31575197"
 
 [[package]]
 name = "iced_futures"
 version = "0.1.2"
-source = "git+https://github.com/myfreeweb/iced#310ddd1f6364dceb6991204a795c47d9279e61f4"
+source = "git+https://github.com/myfreeweb/iced#9d4a0603263ff64e09529df0679f503d31575197"
 dependencies = [
  "futures",
  "log",
@@ -1099,7 +1108,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.1.0"
-source = "git+https://github.com/myfreeweb/iced#310ddd1f6364dceb6991204a795c47d9279e61f4"
+source = "git+https://github.com/myfreeweb/iced#9d4a0603263ff64e09529df0679f503d31575197"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -1113,7 +1122,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.2.2"
-source = "git+https://github.com/myfreeweb/iced#310ddd1f6364dceb6991204a795c47d9279e61f4"
+source = "git+https://github.com/myfreeweb/iced#9d4a0603263ff64e09529df0679f503d31575197"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1125,7 +1134,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.1.0"
-source = "git+https://github.com/myfreeweb/iced#310ddd1f6364dceb6991204a795c47d9279e61f4"
+source = "git+https://github.com/myfreeweb/iced#9d4a0603263ff64e09529df0679f503d31575197"
 dependencies = [
  "iced_core",
 ]
@@ -1133,7 +1142,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.2.2"
-source = "git+https://github.com/myfreeweb/iced#310ddd1f6364dceb6991204a795c47d9279e61f4"
+source = "git+https://github.com/myfreeweb/iced#9d4a0603263ff64e09529df0679f503d31575197"
 dependencies = [
  "bytemuck",
  "futures",
@@ -1323,7 +1332,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9962a2ba81382716b87d7d358493cb71844c1f9165ddad763cd9f4d3f5474df2"
 dependencies = [
  "arrayvec",
- "euclid",
+ "euclid 0.20.14",
  "num-traits",
 ]
 
@@ -1792,7 +1801,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "501c19caa439857ed7bea975fa4c3c10ee9a24e33c2640030c3ac14b58f39f77"
 dependencies = [
- "euclid",
+ "euclid 0.20.14",
  "lyon_geom",
  "png 0.15.3",
  "sw-composite",

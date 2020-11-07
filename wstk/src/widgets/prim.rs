@@ -67,6 +67,7 @@ where
         _defaults: &iced_graphics::Defaults,
         layout: Layout<'_>,
         _cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> (iced_graphics::Primitive, mouse::Interaction) {
         let b = layout.bounds();
 

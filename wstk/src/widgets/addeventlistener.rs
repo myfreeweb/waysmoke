@@ -101,10 +101,12 @@ where
         defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        viewport: &Rectangle,
     ) -> Renderer::Output {
         renderer.draw(
             defaults,
             cursor_position,
+            viewport,
             &self.content,
             layout.children().next().unwrap(),
         )
@@ -123,6 +125,7 @@ pub trait Renderer: iced_native::Renderer {
         &mut self,
         defaults: &Self::Defaults,
         cursor_position: Point,
+        viewport: &Rectangle,
         content: &Element<'_, Message, Self>,
         content_layout: Layout<'_>,
     ) -> Self::Output;
@@ -147,9 +150,10 @@ where
         &mut self,
         defaults: &iced_graphics::Defaults,
         cursor_position: Point,
+        viewport: &Rectangle,
         content: &Element<'_, Message, Self>,
         content_layout: Layout<'_>,
     ) -> Self::Output {
-        content.draw(self, defaults, content_layout, cursor_position)
+        content.draw(self, defaults, content_layout, cursor_position, viewport)
     }
 }
