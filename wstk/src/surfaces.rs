@@ -2,10 +2,12 @@ use smithay_client_toolkit::{default_environment, new_default_environment};
 pub use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
     get_surface_scale_factor,
+    output::OutputInfo,
     reexports::{
         client::{
             protocol::{
-                wl_compositor, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface, wl_touch,
+                wl_compositor, wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface,
+                wl_touch,
             },
             Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
         },
@@ -67,7 +69,7 @@ impl DesktopInstance {
         surface: &dyn DesktopSurface,
         env: Environment<Env>,
         display: Display,
-        _queue: &EventQueue,
+        output: &wl_output::WlOutput,
     ) -> DesktopInstance {
         let theme_mgr = pointer::ThemeManager::init(
             pointer::ThemeSpec::System, // XCURSOR_THEME XCURSOR_SIZE env vars
@@ -93,7 +95,7 @@ impl DesktopInstance {
 
         let layer_surface = layer_shell.get_layer_surface(
             &wl_surface,
-            None,
+            Some(output),
             layer_shell::Layer::Top,
             "Waysmoke Surface".to_owned(),
         );

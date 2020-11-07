@@ -8,6 +8,12 @@ pub use event_loop::*;
 pub mod toplevels;
 pub use toplevels::*;
 
+pub mod run;
+pub use run::*;
+
+pub mod multimonitor;
+pub use multimonitor::*;
+
 pub mod surfaces;
 pub use surfaces::*;
 

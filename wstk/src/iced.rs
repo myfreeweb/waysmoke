@@ -8,7 +8,7 @@ use std::{pin::Pin, time::Duration};
 pub use async_trait::async_trait;
 pub use futures::{channel::mpsc, prelude::*};
 
-use crate::{event_loop::*, surfaces::*};
+use crate::{event_loop::*, run::*, surfaces::*};
 
 #[derive(Clone)]
 pub enum ImageHandle {
@@ -70,9 +70,9 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         surface: T,
         env: Environment<Env>,
         display: Display,
-        queue: &EventQueue,
+        output: wl_output::WlOutput,
     ) -> IcedInstance<T> {
-        let parent = DesktopInstance::new(&surface, env, display, queue);
+        let parent = DesktopInstance::new(&surface, env, display, &output);
 
         let mut compositor = WgpuCompositor::request(iced_wgpu::Settings {
             ..iced_wgpu::Settings::default()
@@ -459,8 +459,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             e => eprintln!("{:?}", e),
         }
     }
+}
 
-    pub async fn run(&mut self) -> bool {
+#[async_trait(?Send)]
+impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
+    async fn run(&mut self) -> bool {
         // TODO: react to seat caps change
         let leave_timeout_existed = self.leave_timeout.is_some();
         let mut leave_timeout = self
@@ -468,23 +471,24 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             .take()
             .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
         // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
+        let this = self; // argh macro weirdness
         futures::select! {
-            ev = self.layer_events.next() => if let Some(event) = ev { if !self.on_layer_event(event).await { return false } },
-            ev = self.ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
-            ev = self.touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
-            sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
-            up = self.surface.run().fuse() => if up == true {
-                self.parent.flush();
-                self.render().await
+            ev = this.layer_events.next() => if let Some(event) = ev { if !this.on_layer_event(event).await { return false } },
+            ev = this.ptr_events.next() => if let Some(event) = ev { this.on_pointer_event(event).await },
+            ev = this.touch_events.next() => if let Some(event) = ev { this.on_touch_event(event).await },
+            sc = this.parent.scale_rx.next() => if let Some(scale) = sc { this.on_scale(scale).await },
+            up = this.surface.run().fuse() => if up == true {
+                this.parent.flush();
+                this.render().await
             },
             () = leave_timeout => {
-                self.surface.on_pointer_leave().await;
+                this.surface.on_pointer_leave().await;
                 // not getting a pointer frame after the timeout ;)
-                self.render().await;
+                this.render().await;
             },
         }
-        if leave_timeout_existed && !self.ptr_active {
-            self.leave_timeout = Some(leave_timeout);
+        if leave_timeout_existed && !this.ptr_active {
+            this.leave_timeout = Some(leave_timeout);
         }
         true
     }

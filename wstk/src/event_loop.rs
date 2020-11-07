@@ -34,7 +34,11 @@ where
 {
     let (tx, rx) = mpsc::unbounded();
     obj.quick_assign(move |_, event, _| {
-        tx.unbounded_send(event).unwrap();
+        if let Err(e) = tx.unbounded_send(event) {
+            if !e.is_disconnected() {
+                panic!("Unexpected send error {:?}", e)
+            }
+        }
     });
     rx
 }

@@ -1,4 +1,3 @@
-use iced_native::*;
 use wstk::*;
 
 mod dock;
@@ -6,20 +5,7 @@ mod style;
 mod svc;
 mod util;
 
-async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
-    // TODO: multi-monitor handling
-    // let output_handler = move |output: wl_output::WlOutput, info: &OutputInfo| {
-    //     eprintln!("Output {:?}", info);
-    // };
-    // let _listner_handle =
-    //     env.listen_for_outputs(move |output, info, _| output_handler(output, info));
-    // display.flush().unwrap();
-    // for output in env.get_all_outputs() {
-    //     if let Some(info) = with_output_info(&output, Clone::clone) {
-    //         println!("Output {:?}", info);
-    //     }
-    // }
-
+async fn main_(env: Environment<Env>, display: Display, _queue: &EventQueue) {
     // let app = gio::Application::new(
     //     Some("technology.unrelenting.waysmoke.Shell"),
     //     gio::ApplicationFlags::default(),
@@ -27,24 +13,44 @@ async fn main_(env: Environment<Env>, display: Display, queue: &EventQueue) {
     // app.register::<gio::Cancellable>(None).unwrap();
     // let dbus = app.get_dbus_connection().unwrap();
 
+    let (new_outputs_tx, new_outputs_rx) = bus::bounded(1);
+    let new_outputs_tx = std::rc::Rc::new(std::cell::RefCell::new(new_outputs_tx));
+    let _listner_handle = env.listen_for_outputs(move |output, info, _| {
+        if info.obsolete {
+            return;
+        }
+        let tx = new_outputs_tx.clone();
+        glib::MainContext::default()
+            .spawn_local(async move { tx.borrow_mut().send(output).await.unwrap() });
+    });
+
     let toplevel_updates = env.with_inner(|i| i.toplevel_updates());
 
     let (_power, power_updates) = svc::power::PowerService::new().await;
 
     let seat = env.get_all_seats()[0].detach();
-    let mut dock = IcedInstance::new(
-        dock::Dock::new(dock::DockCtx {
-            seat,
-            toplevel_updates,
-            power_updates,
+
+    let dctx = dock::DockCtx {
+        seat,
+        toplevel_updates,
+        power_updates,
+    };
+
+    let mut mm = MultiMonitor::new(
+        Box::new(|output| {
+            IcedInstance::new(
+                dock::Dock::new(dctx.clone()),
+                env.clone(),
+                display.clone(),
+                output,
+            )
         }),
-        env.clone(),
-        display.clone(),
-        queue,
+        &env,
+        new_outputs_rx.clone(),
     )
     .await;
 
-    while dock.run().await {}
+    while mm.run().await {}
 }
 
 wstk_main!(main_);
