@@ -251,7 +251,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         self.render().await;
     }
 
-    async fn on_layer_event(&mut self, event: layer_surface::Event) {
+    async fn on_layer_event(&mut self, event: layer_surface::Event) -> bool {
         match event {
             layer_surface::Event::Configure {
                 serial,
@@ -264,8 +264,13 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.size = Size::new(width as f32, height as f32);
                 self.create_swap_chain();
                 self.render().await;
+                true
             }
-            _ => eprintln!("todo: lsh close"),
+            layer_surface::Event::Closed { .. } => false,
+            _ => {
+                eprintln!("unknown lsh event");
+                true
+            }
         }
     }
 
@@ -452,7 +457,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 .unwrap_or_else(|| future::pending::<()>().boxed().fuse());
             // allocation of the pending ^^^ >_< why doesn't select work well with maybe-not-existing futures
             futures::select! {
-                ev = layer_events.next() => if let Some(event) = ev { self.on_layer_event(event).await },
+                ev = layer_events.next() => if let Some(event) = ev { if !self.on_layer_event(event).await { return } },
                 ev = ptr_events.next() => if let Some(event) = ev { self.on_pointer_event(event).await },
                 ev = touch_events.next() => if let Some(event) = ev { self.on_touch_event(event).await },
                 sc = self.parent.scale_rx.next() => if let Some(scale) = sc { self.on_scale(scale).await },
