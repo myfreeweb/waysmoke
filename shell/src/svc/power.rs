@@ -102,12 +102,12 @@ pub struct PowerService {
 }
 
 impl PowerService {
-    pub async fn new() -> (PowerService, bus::Subscriber<PowerState>) {
-        let display_device = gio::DBusProxy::new_for_bus_future(
-            gio::BusType::System,
+    pub async fn new(dbus: &gio::DBusConnection) -> (PowerService, bus::Subscriber<PowerState>) {
+        let display_device = gio::DBusProxy::new_future(
+            dbus,
             gio::DBusProxyFlags::NONE,
             None,
-            "org.freedesktop.UPower",
+            Some("org.freedesktop.UPower"),
             "/org/freedesktop/UPower/devices/DisplayDevice",
             "org.freedesktop.UPower.Device",
         )

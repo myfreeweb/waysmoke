@@ -1,3 +1,4 @@
+use gio::ApplicationExt;
 use wstk::*;
 
 mod dock;
@@ -6,12 +7,12 @@ mod svc;
 mod util;
 
 async fn main_(env: &Environment<Env>, display: &Display) {
-    // let app = gio::Application::new(
-    //     Some("technology.unrelenting.waysmoke.Shell"),
-    //     gio::ApplicationFlags::default(),
-    // );
-    // app.register::<gio::Cancellable>(None).unwrap();
-    // let dbus = app.get_dbus_connection().unwrap();
+    let app = gio::Application::new(
+        Some("technology.unrelenting.waysmoke.Shell"),
+        gio::ApplicationFlags::default(),
+    );
+    app.register::<gio::Cancellable>(None).unwrap();
+    let dbus = app.get_dbus_connection().unwrap();
 
     let (new_outputs_tx, new_outputs_rx) = bus::bounded(1);
     let new_outputs_tx = std::rc::Rc::new(std::cell::RefCell::new(new_outputs_tx));
@@ -26,7 +27,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
 
     let toplevel_updates = env.with_inner(|i| i.toplevel_updates());
 
-    let (_power, power_updates) = svc::power::PowerService::new().await;
+    let (_power, power_updates) = svc::power::PowerService::new(&dbus).await;
 
     let seat = env.get_all_seats()[0].detach();
 
