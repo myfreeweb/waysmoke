@@ -170,17 +170,15 @@ impl Docklet for AppDocklet {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
-        // ugh, fold results in closure lifetime issues
-        for (i, topl) in our_toplevels(&self.toplevels, &self.app.id).enumerate() {
+        for (i, (topl, btn)) in our_toplevels(&self.toplevels, &self.app.id)
+            .zip(self.toplevels_buttons.iter_mut())
+            .enumerate()
+        {
             btns = btns.push(
-                Button::new(
-                    // and even here it complains about "multiple" borrows of self.toplevels_buttons >_<
-                    unsafe { &mut *(&mut self.toplevels_buttons[i] as *mut _) },
-                    Text::new(topl.title.clone()).size(14),
-                )
-                .style(style::Toplevel)
-                .width(Length::Fill)
-                .on_press(DockletMsg::App(Msg::ActivateToplevel(i))),
+                Button::new(btn, Text::new(topl.title.clone()).size(14))
+                    .style(style::Toplevel)
+                    .width(Length::Fill)
+                    .on_press(DockletMsg::App(Msg::ActivateToplevel(i))),
             )
         }
         let title = Text::new(
