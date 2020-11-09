@@ -104,12 +104,11 @@ impl Drop for MediaSubscription {
 pub struct MediaService {
     dbus: gio::DBusConnection,
     noc_sub: Option<gio::SignalSubscriptionId>, // not cloneable in gio lol
+    rx: bus::Subscriber<MediaState>,
 }
 
 impl MediaService {
-    pub async fn new(
-        dbus: &gio::DBusConnection,
-    ) -> (Arc<MediaService>, bus::Subscriber<MediaState>) {
+    pub async fn new(dbus: &gio::DBusConnection) -> Arc<MediaService> {
         let (tx, rx) = bus::bounded(1);
         let atx = Arc::new(RefCell::new(tx));
         let cur_state = Arc::new(RefCell::new((
@@ -173,13 +172,11 @@ impl MediaService {
             },
         );
 
-        (
-            Arc::new(MediaService {
-                dbus,
-                noc_sub: Some(noc_sub),
-            }),
+        Arc::new(MediaService {
+            dbus,
+            noc_sub: Some(noc_sub),
             rx,
-        )
+        })
     }
 
     async fn add(
@@ -282,6 +279,10 @@ impl MediaService {
         } else {
             eprintln!("Failed to get proxies for MPRIS: {}", name);
         }
+    }
+
+    pub fn subscribe(&self) -> bus::Subscriber<MediaState> {
+        self.rx.clone()
     }
 
     pub fn control_player(&self, name: &str, cmd: &str) {

@@ -96,13 +96,13 @@ pub struct PowerState {
     // TODO: all the devices
 }
 
-#[derive(Clone)]
 pub struct PowerService {
     display_device: gio::DBusProxy,
+    rx: bus::Subscriber<PowerState>,
 }
 
 impl PowerService {
-    pub async fn new(dbus: &gio::DBusConnection) -> (PowerService, bus::Subscriber<PowerState>) {
+    pub async fn new(dbus: &gio::DBusConnection) -> Arc<PowerService> {
         let display_device = gio::DBusProxy::new_future(
             dbus,
             gio::DBusProxyFlags::NONE,
@@ -141,6 +141,10 @@ impl PowerService {
             })
             .unwrap();
 
-        (PowerService { display_device }, rx)
+        Arc::new(PowerService { display_device, rx })
+    }
+
+    pub fn subscribe(&self) -> bus::Subscriber<PowerState> {
+        self.rx.clone()
     }
 }

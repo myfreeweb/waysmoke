@@ -49,12 +49,12 @@ impl AppDocklet {
             HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
         >,
         media_svc: Arc<svc::media::MediaService>,
-        media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
     ) -> AppDocklet {
         let icon = app
             .icon()
             .map(icons::icon_from_path)
             .unwrap_or_else(|| UNKNOWN_ICON.clone());
+        let media_updates = media_svc.subscribe();
         AppDocklet {
             app,
             icon,
@@ -83,10 +83,8 @@ impl AppDocklet {
             HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
         >,
         media_svc: Arc<svc::media::MediaService>,
-        media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
     ) -> Option<AppDocklet> {
-        apps::App::lookup(id)
-            .map(|a| AppDocklet::new(a, seat, toplevel_updates, media_svc, media_updates))
+        apps::App::lookup(id).map(|a| AppDocklet::new(a, seat, toplevel_updates, media_svc))
     }
 }
 

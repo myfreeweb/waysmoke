@@ -7,11 +7,11 @@ pub struct PowerDocklet {
 }
 
 impl PowerDocklet {
-    pub fn new(rx: wstk::bus::Subscriber<svc::power::PowerState>) -> Self {
+    pub fn new(power: Arc<svc::power::PowerService>) -> Self {
         PowerDocklet {
             icon: icons::icon_from_path(apps::icon("dialog-question")),
             evl: Default::default(),
-            rx,
+            rx: power.subscribe(),
         }
     }
 }

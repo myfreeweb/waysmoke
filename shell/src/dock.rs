@@ -122,9 +122,8 @@ pub struct DockCtx {
     pub toplevel_updates: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
-    pub power_updates: wstk::bus::Subscriber<svc::power::PowerState>,
+    pub power: Arc<svc::power::PowerService>,
     pub media: Arc<svc::media::MediaService>,
-    pub media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
 }
 
 pub struct Dock {
@@ -145,7 +144,7 @@ pub struct Dock {
 
 impl Dock {
     pub fn new(ctx: DockCtx) -> Dock {
-        let power = power::PowerDocklet::new(ctx.power_updates.clone());
+        let power = power::PowerDocklet::new(ctx.power.clone());
         let toplevel_updates = ctx.toplevel_updates.clone();
         Dock {
             ctx,
@@ -181,7 +180,6 @@ impl Dock {
                     self.ctx.seat.clone(),
                     self.ctx.toplevel_updates.clone(),
                     self.ctx.media.clone(),
-                    self.ctx.media_updates.clone(),
                 ) {
                     self.apps.push(app);
                 }
@@ -195,7 +193,6 @@ impl Dock {
                     self.ctx.seat.clone(),
                     self.ctx.toplevel_updates.clone(),
                     self.ctx.media.clone(),
-                    self.ctx.media_updates.clone(),
                 )
                 .or_else(|| {
                     topl.gtk_app_id.as_ref().and_then(|gid| {
@@ -204,7 +201,6 @@ impl Dock {
                             self.ctx.seat.clone(),
                             self.ctx.toplevel_updates.clone(),
                             self.ctx.media.clone(),
-                            self.ctx.media_updates.clone(),
                         )
                     })
                 }) {
