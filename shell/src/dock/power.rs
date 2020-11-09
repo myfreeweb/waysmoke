@@ -21,7 +21,7 @@ impl Docklet for PowerDocklet {
     fn widget(&mut self) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let img = icons::icon_widget(self.icon.clone());
+        let img = icons::icon_widget(self.icon.clone(), ICON_SIZE);
 
         let listener =
             AddEventListener::new(&mut self.evl, img).on_pointer_enter(DockletMsg::Hover);
@@ -35,7 +35,7 @@ impl Docklet for PowerDocklet {
     }
 
     fn width(&self) -> u16 {
-        icons::ICON_SIZE + APP_PADDING * 2
+        ICON_SIZE + APP_PADDING * 2
     }
 
     fn retained_icon(&self) -> Option<wstk::ImageHandle> {

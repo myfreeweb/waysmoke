@@ -1,4 +1,4 @@
-use crate::util::icons;
+use crate::dock;
 use gio::prelude::*;
 use std::path::Path;
 
@@ -79,9 +79,9 @@ fn themed_icon(icon: &gio::ThemedIcon) -> Option<linicon::IconPath> {
     let names = icon.get_names();
     let name = names.iter().next()?;
     // TODO: get current scale from caller instead of assuming 2
-    icons_iter(name, icons::ICON_SIZE, 2)
-        .chain(icons_iter(name, icons::ICON_SIZE * 2, 1))
-        .chain(icons_iter(name, icons::ICON_SIZE, 1))
+    icons_iter(name, dock::ICON_SIZE, 2)
+        .chain(icons_iter(name, dock::ICON_SIZE * 2, 1))
+        .chain(icons_iter(name, dock::ICON_SIZE, 1))
         .chain(icons_iter(name, 512, 1))
         .chain(icons_iter(name, 256, 1))
         .chain(icons_iter(name, 128, 1))
@@ -119,14 +119,20 @@ fn check_icon(p: String, icon_type: linicon::IconType) -> Option<linicon::IconPa
     }
 }
 
-pub fn icon(name: &str) -> linicon::IconPath {
+pub fn icon_opt(name: &str, size: u16) -> Option<linicon::IconPath> {
     linicon::lookup_icon(name)
         .from_theme("Adwaita")
         .with_search_paths(&PATHS[..])
-        .unwrap()
-        .with_size(128)
+        .ok()?
+        .with_size(size)
         .with_scale(1)
         .flat_map(|x| x)
         .next()
-        .unwrap()
+}
+
+pub fn icon(name: &str) -> linicon::IconPath {
+    icon_opt(name, dock::ICON_SIZE * 2).unwrap_or_else(|| {
+        icon_opt(name, dock::ICON_SIZE)
+            .unwrap_or_else(|| icon_opt("application-x-executable", dock::ICON_SIZE).unwrap())
+    })
 }

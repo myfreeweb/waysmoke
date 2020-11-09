@@ -1,10 +1,26 @@
 use crate::{dock::*, style};
 use std::sync::Arc;
 
+lazy_static::lazy_static! {
+    static ref PLAY_ICON: wstk::ImageHandle =
+        icons::icon_from_path(apps::icon("media-playback-start-symbolic"));
+    static ref PAUSE_ICON: wstk::ImageHandle =
+        icons::icon_from_path(apps::icon("media-playback-pause-symbolic"));
+    // static ref NEXT_ICON: wstk::ImageHandle =
+    //     icons::icon_from_path(apps::icon("media-skip-forward-symbolic"));
+}
+
 #[derive(Debug, Clone)]
 pub enum Msg {
     ActivateApp,
     ActivateToplevel(usize),
+    MediaControl(usize, &'static str),
+}
+
+#[derive(Default)]
+pub struct MediaBtns {
+    play: iced_native::button::State,
+    pause: iced_native::button::State,
 }
 
 pub struct AppDocklet {
@@ -15,19 +31,25 @@ pub struct AppDocklet {
     pub toplevels_scrollable: iced_native::scrollable::State,
     pub toplevels_buttons: Vec<iced_native::button::State>,
     pub seat: wl_seat::WlSeat,
-    pub rx: wstk::bus::Subscriber<
+    pub toplevel_updates: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
     pub toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
+    pub media_svc: Arc<svc::media::MediaService>,
+    pub media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
+    pub medias: Arc<svc::media::MediaState>,
+    pub media_buttons: Vec<MediaBtns>,
 }
 
 impl AppDocklet {
     pub fn new(
         app: apps::App,
         seat: wl_seat::WlSeat,
-        rx: wstk::bus::Subscriber<
+        toplevel_updates: wstk::bus::Subscriber<
             HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
         >,
+        media_svc: Arc<svc::media::MediaService>,
+        media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
     ) -> AppDocklet {
         let icon = app
             .icon()
@@ -41,8 +63,12 @@ impl AppDocklet {
             toplevels_scrollable: Default::default(),
             toplevels_buttons: Default::default(),
             seat,
-            rx,
+            toplevel_updates,
             toplevels: Arc::new(HashMap::new()),
+            media_svc,
+            media_updates,
+            medias: Arc::new(HashMap::new()),
+            media_buttons: Default::default(),
         }
     }
 
@@ -53,11 +79,14 @@ impl AppDocklet {
     pub fn from_id(
         id: &str,
         seat: wl_seat::WlSeat,
-        rx: wstk::bus::Subscriber<
+        toplevel_updates: wstk::bus::Subscriber<
             HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
         >,
+        media_svc: Arc<svc::media::MediaService>,
+        media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
     ) -> Option<AppDocklet> {
-        apps::App::lookup(id).map(|a| AppDocklet::new(a, seat, rx))
+        apps::App::lookup(id)
+            .map(|a| AppDocklet::new(a, seat, toplevel_updates, media_svc, media_updates))
     }
 }
 
@@ -68,13 +97,49 @@ impl Docklet for AppDocklet {
 
         let running = our_toplevels(&self.toplevels, self.id()).next().is_some();
 
-        let big_button = Button::new(&mut self.button, icons::icon_widget(self.icon.clone()))
-            .style(style::Dock(style::DARK_COLOR))
-            .padding(APP_PADDING)
-            .on_press(DockletMsg::App(Msg::ActivateApp));
+        let big_button = Button::new(
+            &mut self.button,
+            icons::icon_widget(self.icon.clone(), ICON_SIZE),
+        )
+        .style(style::Dock(style::DARK_COLOR))
+        .padding(APP_PADDING)
+        .on_press(DockletMsg::App(Msg::ActivateApp));
+
+        let mut content = Row::new().push(big_button);
+
+        while self.media_buttons.len() < our_medias(&self.medias, &self.app.id).count() {
+            self.media_buttons.push(Default::default());
+        }
+        for (i, ((_, media_data), btns)) in our_medias(&self.medias, &self.app.id)
+            .zip(self.media_buttons.iter_mut())
+            .enumerate()
+        {
+            content = content.push(
+                if media_data.status == svc::media::PlaybackStatus::Playing {
+                    Button::new(
+                        &mut btns.pause,
+                        Container::new(icons::icon_widget(PAUSE_ICON.clone(), ICON_SIZE / 2))
+                            .height(Length::Fill)
+                            .align_y(Align::Center),
+                    )
+                    .on_press(DockletMsg::App(Msg::MediaControl(i, "Pause")))
+                } else {
+                    Button::new(
+                        &mut btns.play,
+                        Container::new(icons::icon_widget(PLAY_ICON.clone(), ICON_SIZE / 2))
+                            .height(Length::Fill)
+                            .align_y(Align::Center),
+                    )
+                    .on_press(DockletMsg::App(Msg::MediaControl(i, "Play")))
+                }
+                .style(style::Toplevel)
+                .padding(APP_PADDING)
+                .height(Length::Fill),
+            );
+        }
 
         let listener =
-            AddEventListener::new(&mut self.evl, big_button).on_pointer_enter(DockletMsg::Hover);
+            AddEventListener::new(&mut self.evl, content).on_pointer_enter(DockletMsg::Hover);
 
         Container::new(listener)
             .center_x()
@@ -88,8 +153,10 @@ impl Docklet for AppDocklet {
     }
 
     fn width(&self) -> u16 {
-        // TODO: will be dynamic based on extras
-        icons::ICON_SIZE + APP_PADDING * 2
+        ICON_SIZE
+            + APP_PADDING * 2
+            + our_medias(&self.medias, &self.app.id)
+                .fold(0, |acc, _| acc + ICON_SIZE / 2 + APP_PADDING * 2)
     }
 
     fn retained_icon(&self) -> Option<wstk::ImageHandle> {
@@ -155,12 +222,22 @@ impl Docklet for AppDocklet {
                     .handle
                     .activate(&self.seat);
             }
+            DockletMsg::App(Msg::MediaControl(medi, op)) => {
+                self.media_svc.control_player(
+                    our_medias(&self.medias, &self.app.id).nth(medi).unwrap().0,
+                    op,
+                );
+            }
             _ => (),
         }
     }
 
     async fn run(&mut self) {
-        self.toplevels = self.rx.next().await.unwrap();
+        let this = self;
+        futures::select! {
+            tls = this.toplevel_updates.next().fuse() => this.toplevels = tls.unwrap(),
+            med = this.media_updates.next().fuse() => this.medias = med.unwrap(),
+        };
     }
 }
 
@@ -171,4 +248,13 @@ fn our_toplevels<'a>(
     id: &'a str,
 ) -> impl Iterator<Item = &'a wstk::toplevels::ToplevelState> {
     toplevels.values().filter(move |topl| topl.matches_id(id))
+}
+
+fn our_medias<'a>(
+    medias: &'a Arc<svc::media::MediaState>,
+    id: &'a String,
+) -> impl Iterator<Item = (&'a String, &'a svc::media::MediaPlayerState)> {
+    medias
+        .iter()
+        .filter(move |(_, m)| m.desktop_entry.as_ref() == Some(id) && m.can_pause && m.can_play)
 }

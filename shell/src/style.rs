@@ -1,4 +1,4 @@
-use iced_core::{Background, Color};
+pub use iced_core::{Background, Color};
 use iced_graphics::*;
 use wstk::*;
 

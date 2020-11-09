@@ -1,7 +1,7 @@
 use crate::{style, svc, util::*};
 use futures::prelude::*;
 use gio::AppInfoExt; // DesktopAppInfoExt
-use std::{cell::Cell, collections::HashMap};
+use std::{cell::Cell, collections::HashMap, sync::Arc};
 use wstk::*;
 
 lazy_static::lazy_static! {
@@ -9,13 +9,14 @@ lazy_static::lazy_static! {
         icons::icon_from_path(apps::icon("application-x-executable"));
 }
 
+pub const ICON_SIZE: u16 = 48;
 pub const POPOVER_HEIGHT_MAX: u16 = 420;
 pub const TOPLEVELS_WIDTH: u16 = 290;
 pub const APP_PADDING: u16 = 4;
 pub const DOCK_PADDING: u16 = 4;
 pub const DOCK_GAP: u16 = 8;
 pub const BAR_HEIGHT: u16 = 10;
-pub const DOCK_HEIGHT: u16 = icons::ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2;
+pub const DOCK_HEIGHT: u16 = ICON_SIZE + APP_PADDING * 2 + DOCK_PADDING * 2;
 pub const DOCK_AND_GAP_HEIGHT: u16 = DOCK_HEIGHT + DOCK_GAP;
 
 #[derive(Debug, Clone)]
@@ -122,6 +123,8 @@ pub struct DockCtx {
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
     pub power_updates: wstk::bus::Subscriber<svc::power::PowerState>,
+    pub media: Arc<svc::media::MediaService>,
+    pub media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
 }
 
 pub struct Dock {
@@ -177,6 +180,8 @@ impl Dock {
                     id,
                     self.ctx.seat.clone(),
                     self.ctx.toplevel_updates.clone(),
+                    self.ctx.media.clone(),
+                    self.ctx.media_updates.clone(),
                 ) {
                     self.apps.push(app);
                 }
@@ -189,6 +194,8 @@ impl Dock {
                     &topl.app_id,
                     self.ctx.seat.clone(),
                     self.ctx.toplevel_updates.clone(),
+                    self.ctx.media.clone(),
+                    self.ctx.media_updates.clone(),
                 )
                 .or_else(|| {
                     topl.gtk_app_id.as_ref().and_then(|gid| {
@@ -196,6 +203,8 @@ impl Dock {
                             &gid,
                             self.ctx.seat.clone(),
                             self.ctx.toplevel_updates.clone(),
+                            self.ctx.media.clone(),
+                            self.ctx.media_updates.clone(),
                         )
                     })
                 }) {

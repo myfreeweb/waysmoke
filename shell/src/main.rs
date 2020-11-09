@@ -28,6 +28,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
     let toplevel_updates = env.with_inner(|i| i.toplevel_updates());
 
     let (_power, power_updates) = svc::power::PowerService::new(&dbus).await;
+    let (media, media_updates) = svc::media::MediaService::new(&dbus).await;
 
     let seat = env.get_all_seats()[0].detach();
 
@@ -35,6 +36,8 @@ async fn main_(env: &Environment<Env>, display: &Display) {
         seat,
         toplevel_updates,
         power_updates,
+        media,
+        media_updates,
     };
 
     let mut mm = MultiMonitor::new(
