@@ -1,9 +1,9 @@
 use crate::{dock::*, style, svc::power::*, util::apps};
 
 pub struct PowerDocklet {
-    pub icon: wstk::ImageHandle,
-    pub evl: addeventlistener::State,
-    pub rx: wstk::bus::Subscriber<svc::power::PowerState>,
+    icon: wstk::ImageHandle,
+    evl: addeventlistener::State,
+    rx: wstk::bus::Subscriber<svc::power::PowerState>,
 }
 
 impl PowerDocklet {

@@ -18,26 +18,26 @@ pub enum Msg {
 }
 
 #[derive(Default)]
-pub struct MediaBtns {
+struct MediaBtns {
     play: iced_native::button::State,
     pause: iced_native::button::State,
 }
 
 pub struct AppDocklet {
-    pub services: &'static svc::Services,
-    pub app: apps::App,
-    pub icon: wstk::ImageHandle,
-    pub button: iced_native::button::State,
-    pub evl: addeventlistener::State,
-    pub toplevels_scrollable: iced_native::scrollable::State,
-    pub toplevels_buttons: Vec<iced_native::button::State>,
-    pub toplevel_updates: wstk::bus::Subscriber<
+    services: &'static svc::Services,
+    app: apps::App,
+    icon: wstk::ImageHandle,
+    button: iced_native::button::State,
+    evl: addeventlistener::State,
+    toplevels_scrollable: iced_native::scrollable::State,
+    toplevels_buttons: Vec<iced_native::button::State>,
+    toplevel_updates: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
-    pub toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
-    pub media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
-    pub medias: Arc<svc::media::MediaState>,
-    pub media_buttons: Vec<MediaBtns>,
+    toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
+    media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
+    medias: Arc<svc::media::MediaState>,
+    media_buttons: Vec<MediaBtns>,
 }
 
 impl AppDocklet {
