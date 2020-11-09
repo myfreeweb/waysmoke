@@ -1,6 +1,6 @@
 use futures::prelude::*;
 use gio::prelude::*;
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wstk::bus;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -110,8 +110,8 @@ pub struct MediaService {
 impl MediaService {
     pub async fn new(dbus: &gio::DBusConnection) -> MediaService {
         let (tx, rx) = bus::bounded(1);
-        let atx = Arc::new(RefCell::new(tx));
-        let cur_state = Arc::new(RefCell::new((
+        let atx = Rc::new(RefCell::new(tx));
+        let cur_state = Rc::new(RefCell::new((
             HashMap::<String, MediaPlayerState>::new(),
             HashMap::<String, MediaSubscription>::new(),
         )));
@@ -181,8 +181,8 @@ impl MediaService {
 
     async fn add(
         dbus: &gio::DBusConnection,
-        atx: Arc<RefCell<bus::Publisher<HashMap<String, MediaPlayerState>>>>,
-        cur_state: Arc<
+        atx: Rc<RefCell<bus::Publisher<HashMap<String, MediaPlayerState>>>>,
+        cur_state: Rc<
             RefCell<(
                 HashMap<String, MediaPlayerState>,
                 HashMap<String, MediaSubscription>,

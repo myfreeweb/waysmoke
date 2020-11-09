@@ -1,6 +1,6 @@
 use futures::prelude::*;
 use gio::prelude::*;
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wstk::bus;
 
 #[derive(Debug, Clone)]
@@ -114,13 +114,13 @@ impl PowerService {
         .await
         .unwrap();
 
-        let cur_state = Arc::new(RefCell::new(PowerState {
+        let cur_state = Rc::new(RefCell::new(PowerState {
             total: PowerDeviceState::query(&display_device),
         }));
 
         let (mut tx, rx) = bus::bounded(1);
         tx.send(cur_state.borrow().clone()).await.unwrap();
-        let atx = Arc::new(RefCell::new(tx));
+        let atx = Rc::new(RefCell::new(tx));
         display_device
             .connect_local("g-properties-changed", true, move |args| {
                 let new_props = args[1]
