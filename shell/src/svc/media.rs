@@ -108,7 +108,7 @@ pub struct MediaService {
 }
 
 impl MediaService {
-    pub async fn new(dbus: &gio::DBusConnection) -> Arc<MediaService> {
+    pub async fn new(dbus: &gio::DBusConnection) -> MediaService {
         let (tx, rx) = bus::bounded(1);
         let atx = Arc::new(RefCell::new(tx));
         let cur_state = Arc::new(RefCell::new((
@@ -172,11 +172,11 @@ impl MediaService {
             },
         );
 
-        Arc::new(MediaService {
+        MediaService {
             dbus,
             noc_sub: Some(noc_sub),
             rx,
-        })
+        }
     }
 
     async fn add(

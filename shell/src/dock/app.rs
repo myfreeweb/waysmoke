@@ -24,48 +24,40 @@ pub struct MediaBtns {
 }
 
 pub struct AppDocklet {
+    pub services: &'static svc::Services,
     pub app: apps::App,
     pub icon: wstk::ImageHandle,
     pub button: iced_native::button::State,
     pub evl: addeventlistener::State,
     pub toplevels_scrollable: iced_native::scrollable::State,
     pub toplevels_buttons: Vec<iced_native::button::State>,
-    pub seat: wl_seat::WlSeat,
     pub toplevel_updates: wstk::bus::Subscriber<
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
     pub toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
-    pub media_svc: Arc<svc::media::MediaService>,
     pub media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
     pub medias: Arc<svc::media::MediaState>,
     pub media_buttons: Vec<MediaBtns>,
 }
 
 impl AppDocklet {
-    pub fn new(
-        app: apps::App,
-        seat: wl_seat::WlSeat,
-        toplevel_updates: wstk::bus::Subscriber<
-            HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
-        >,
-        media_svc: Arc<svc::media::MediaService>,
-    ) -> AppDocklet {
+    pub fn new(services: &'static svc::Services, app: apps::App) -> AppDocklet {
         let icon = app
             .icon()
             .map(icons::icon_from_path)
             .unwrap_or_else(|| UNKNOWN_ICON.clone());
-        let media_updates = media_svc.subscribe();
+        let media_updates = services.media.subscribe();
+        let toplevel_updates = services.toplevel_updates.clone();
         AppDocklet {
+            services,
             app,
             icon,
             button: Default::default(),
             evl: Default::default(),
             toplevels_scrollable: Default::default(),
             toplevels_buttons: Default::default(),
-            seat,
             toplevel_updates,
             toplevels: Arc::new(HashMap::new()),
-            media_svc,
             media_updates,
             medias: Arc::new(HashMap::new()),
             media_buttons: Default::default(),
@@ -76,15 +68,8 @@ impl AppDocklet {
         &self.app.id
     }
 
-    pub fn from_id(
-        id: &str,
-        seat: wl_seat::WlSeat,
-        toplevel_updates: wstk::bus::Subscriber<
-            HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
-        >,
-        media_svc: Arc<svc::media::MediaService>,
-    ) -> Option<AppDocklet> {
-        apps::App::lookup(id).map(|a| AppDocklet::new(a, seat, toplevel_updates, media_svc))
+    pub fn from_id(services: &'static svc::Services, id: &str) -> Option<AppDocklet> {
+        apps::App::lookup(id).map(|a| AppDocklet::new(services, a))
     }
 }
 
@@ -203,7 +188,7 @@ impl Docklet for AppDocklet {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
                 for topl in our_toplevels(&self.toplevels, &self.app.id) {
-                    topl.handle.activate(&self.seat);
+                    topl.handle.activate(&self.services.seat);
                     return;
                 }
                 self.app
@@ -216,10 +201,10 @@ impl Docklet for AppDocklet {
                     .nth(topli)
                     .unwrap()
                     .handle
-                    .activate(&self.seat);
+                    .activate(&self.services.seat);
             }
             DockletMsg::App(Msg::MediaControl(medi, op)) => {
-                self.media_svc.control_player(
+                self.services.media.control_player(
                     our_medias(&self.medias, &self.app.id).nth(medi).unwrap().0,
                     op,
                 );

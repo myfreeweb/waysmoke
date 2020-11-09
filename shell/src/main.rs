@@ -25,24 +25,17 @@ async fn main_(env: &Environment<Env>, display: &Display) {
             .spawn_local(async move { tx.borrow_mut().send(output).await.unwrap() });
     });
 
-    let toplevel_updates = env.with_inner(|i| i.toplevel_updates());
-
-    let power = svc::power::PowerService::new(&dbus).await;
-    let media = svc::media::MediaService::new(&dbus).await;
-
-    let seat = env.get_all_seats()[0].detach();
-
-    let dctx = dock::DockCtx {
-        seat,
-        toplevel_updates,
-        power,
-        media,
-    };
+    let services: &'static _ = Box::leak(Box::new(svc::Services {
+        seat: env.get_all_seats()[0].detach(),
+        toplevel_updates: env.with_inner(|i| i.toplevel_updates()),
+        power: svc::power::PowerService::new(&dbus).await,
+        media: svc::media::MediaService::new(&dbus).await,
+    }));
 
     let mut mm = MultiMonitor::new(
         Box::new(|output| {
             IcedInstance::new(
-                dock::Dock::new(dctx.clone()),
+                dock::Dock::new(services),
                 env.clone(),
                 display.clone(),
                 output,

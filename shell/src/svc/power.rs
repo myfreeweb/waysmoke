@@ -102,7 +102,7 @@ pub struct PowerService {
 }
 
 impl PowerService {
-    pub async fn new(dbus: &gio::DBusConnection) -> Arc<PowerService> {
+    pub async fn new(dbus: &gio::DBusConnection) -> PowerService {
         let display_device = gio::DBusProxy::new_future(
             dbus,
             gio::DBusProxyFlags::NONE,
@@ -141,7 +141,7 @@ impl PowerService {
             })
             .unwrap();
 
-        Arc::new(PowerService { display_device, rx })
+        PowerService { display_device, rx }
     }
 
     pub fn subscribe(&self) -> bus::Subscriber<PowerState> {

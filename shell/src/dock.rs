@@ -1,7 +1,7 @@
 use crate::{style, svc, util::*};
 use futures::prelude::*;
 use gio::AppInfoExt; // DesktopAppInfoExt
-use std::{cell::Cell, collections::HashMap, sync::Arc};
+use std::{cell::Cell, collections::HashMap};
 use wstk::*;
 
 lazy_static::lazy_static! {
@@ -116,18 +116,8 @@ fn popover<'a>(
         .into()
 }
 
-#[derive(Clone)]
-pub struct DockCtx {
-    pub seat: wl_seat::WlSeat,
-    pub toplevel_updates: wstk::bus::Subscriber<
-        HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
-    >,
-    pub power: Arc<svc::power::PowerService>,
-    pub media: Arc<svc::media::MediaService>,
-}
-
 pub struct Dock {
-    ctx: DockCtx,
+    services: &'static svc::Services,
     is_pointed: bool,
     is_touched: bool,
     hovered_docklet: Option<usize>,
@@ -143,11 +133,11 @@ pub struct Dock {
 }
 
 impl Dock {
-    pub fn new(ctx: DockCtx) -> Dock {
-        let power = power::PowerDocklet::new(ctx.power.clone());
-        let toplevel_updates = ctx.toplevel_updates.clone();
+    pub fn new(services: &'static svc::Services) -> Dock {
+        let power = power::PowerDocklet::new(services);
+        let toplevel_updates = services.toplevel_updates.clone();
         Dock {
-            ctx,
+            services,
             is_pointed: false,
             is_touched: false,
             hovered_docklet: None,
@@ -175,12 +165,7 @@ impl Dock {
 
         for id in docked.iter() {
             if self.apps.iter().find(|a| a.id() == *id).is_none() {
-                if let Some(app) = app::AppDocklet::from_id(
-                    id,
-                    self.ctx.seat.clone(),
-                    self.ctx.toplevel_updates.clone(),
-                    self.ctx.media.clone(),
-                ) {
+                if let Some(app) = app::AppDocklet::from_id(self.services, id) {
                     self.apps.push(app);
                 }
             }
@@ -188,22 +173,13 @@ impl Dock {
 
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
-                if let Some(app) = app::AppDocklet::from_id(
-                    &topl.app_id,
-                    self.ctx.seat.clone(),
-                    self.ctx.toplevel_updates.clone(),
-                    self.ctx.media.clone(),
-                )
-                .or_else(|| {
-                    topl.gtk_app_id.as_ref().and_then(|gid| {
-                        app::AppDocklet::from_id(
-                            &gid,
-                            self.ctx.seat.clone(),
-                            self.ctx.toplevel_updates.clone(),
-                            self.ctx.media.clone(),
-                        )
+                if let Some(app) =
+                    app::AppDocklet::from_id(self.services, &topl.app_id).or_else(|| {
+                        topl.gtk_app_id
+                            .as_ref()
+                            .and_then(|gid| app::AppDocklet::from_id(self.services, &gid))
                     })
-                }) {
+                {
                     self.apps.push(app);
                 }
             }

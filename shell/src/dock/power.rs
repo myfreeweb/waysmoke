@@ -7,11 +7,11 @@ pub struct PowerDocklet {
 }
 
 impl PowerDocklet {
-    pub fn new(power: Arc<svc::power::PowerService>) -> Self {
+    pub fn new(services: &'static svc::Services) -> Self {
         PowerDocklet {
             icon: icons::icon_from_path(apps::icon("dialog-question")),
             evl: Default::default(),
-            rx: power.subscribe(),
+            rx: services.power.subscribe(),
         }
     }
 }
