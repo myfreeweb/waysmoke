@@ -20,7 +20,7 @@ async-trait = "0.1"
 futures = "0.3"
 glib = "=0.10.0"
 
-# patch: damage, transparency, image-debloat
+# patch: damage, image-debloat, GLib loop instead of conflicting local executor
 iced_core =     { git = "https://github.com/myfreeweb/iced" }
 iced_futures =  { git = "https://github.com/myfreeweb/iced" }
 iced_wgpu =     { git = "https://github.com/myfreeweb/iced", features = ["default_system_font", "svg", "png"] }
