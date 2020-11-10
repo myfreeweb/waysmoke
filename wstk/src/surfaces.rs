@@ -1,8 +1,7 @@
 use smithay_client_toolkit::{default_environment, new_default_environment};
 pub use smithay_client_toolkit::{
     environment::{Environment, SimpleGlobal},
-    get_surface_scale_factor,
-    output::OutputInfo,
+    get_surface_scale_factor, output,
     reexports::{
         client::{
             protocol::{

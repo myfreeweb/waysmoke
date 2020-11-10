@@ -14,17 +14,6 @@ async fn main_(env: &Environment<Env>, display: &Display) {
     app.register::<gio::Cancellable>(None).unwrap();
     let dbus = app.get_dbus_connection().unwrap();
 
-    let (new_outputs_tx, new_outputs_rx) = bus::bounded(1);
-    let new_outputs_tx = std::rc::Rc::new(std::cell::RefCell::new(new_outputs_tx));
-    let _listner_handle = env.listen_for_outputs(move |output, info, _| {
-        if info.obsolete {
-            return;
-        }
-        let tx = new_outputs_tx.clone();
-        glib::MainContext::default()
-            .spawn_local(async move { tx.borrow_mut().send(output).await.unwrap() });
-    });
-
     let services: &'static _ = Box::leak(Box::new(svc::Services {
         seat: env.get_all_seats()[0].detach(),
         toplevels: env.with_inner(|i| i.toplevel_service()),
@@ -42,7 +31,6 @@ async fn main_(env: &Environment<Env>, display: &Display) {
             )
         }),
         &env,
-        new_outputs_rx.clone(),
     )
     .await;
 

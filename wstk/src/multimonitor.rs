@@ -1,15 +1,15 @@
 use crate::{
-    bus,
     run::*,
-    surfaces::{wl_output, Env, Environment},
+    surfaces::{output, wl_output, Env, Environment},
 };
 use async_trait::async_trait;
-use futures::{stream, Future, FutureExt, StreamExt};
+use futures::{channel::mpsc, Future, FutureExt, StreamExt};
 
 pub struct MultiMonitor<'a, T, F> {
+    _osl: output::OutputStatusListener,
+    rx: mpsc::UnboundedReceiver<wl_output::WlOutput>,
     instances: Vec<T>,
     mk: Box<dyn 'a + Fn(wl_output::WlOutput) -> F>,
-    recv: stream::Fuse<bus::Subscriber<wl_output::WlOutput>>,
 }
 
 impl<'a, T, F> MultiMonitor<'a, T, F>
@@ -20,17 +20,30 @@ where
     pub async fn new(
         mk: Box<dyn 'a + Fn(wl_output::WlOutput) -> F>,
         env: &'a Environment<Env>,
-        recv: bus::Subscriber<wl_output::WlOutput>,
     ) -> MultiMonitor<'a, T, F> {
+        let (tx, rx) = mpsc::unbounded();
         let mut instances = Vec::new();
+
+        let _osl = env.listen_for_outputs(move |output, info, _| {
+            if info.obsolete {
+                return;
+            }
+            if let Err(e) = tx.unbounded_send(output) {
+                if !e.is_disconnected() {
+                    panic!("Unexpected send error {:?}", e)
+                }
+            }
+        });
+
         for output in env.get_all_outputs() {
             instances.push(mk(output).await);
         }
 
         MultiMonitor {
+            _osl,
+            rx,
             instances,
             mk,
-            recv: recv.fuse(),
         }
     }
 }
@@ -60,13 +73,10 @@ where
                     }
                 }
             },
-            output = this.recv.select_next_some() => {
+            output = this.rx.select_next_some() => {
                 drop(run_instances);
                 this.instances.push(
-                    (this.mk)(
-                        (*output).clone(),
-                    )
-                    .await,
+                    (this.mk)(output).await,
                 );
             }
         }
