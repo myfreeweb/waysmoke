@@ -1,7 +1,11 @@
 use futures::prelude::*;
 use gio::prelude::*;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use wstk::bus;
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    rc::Rc,
+};
+use wstk::event_listener;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlaybackStatus {
@@ -104,17 +108,15 @@ impl Drop for MediaSubscription {
 pub struct MediaService {
     dbus: gio::DBusConnection,
     noc_sub: Option<gio::SignalSubscriptionId>, // not cloneable in gio lol
-    rx: bus::Subscriber<MediaState>,
+    notifier: Rc<event_listener::Event>,
+    state: Rc<RefCell<MediaState>>,
 }
 
 impl MediaService {
     pub async fn new(dbus: &gio::DBusConnection) -> MediaService {
-        let (tx, rx) = bus::bounded(1);
-        let atx = Rc::new(RefCell::new(tx));
-        let cur_state = Rc::new(RefCell::new((
-            HashMap::<String, MediaPlayerState>::new(),
-            HashMap::<String, MediaSubscription>::new(),
-        )));
+        let notifier = Rc::new(event_listener::Event::new());
+        let state = Rc::new(RefCell::new(HashMap::new()));
+        let subs = Rc::new(RefCell::new(HashMap::new()));
 
         let names = dbus
             .send_message_with_reply_future(
@@ -136,63 +138,65 @@ impl MediaService {
             .0;
 
         for name in names.into_iter().filter(|n| n.starts_with("org.mpris.")) {
-            Self::add(dbus, atx.clone(), cur_state.clone(), name).await;
+            Self::add(
+                dbus.clone(),
+                notifier.clone(),
+                state.clone(),
+                subs.clone(),
+                name,
+            )
+            .await;
         }
 
-        // {
-        //                     let mut stref = cur_state.borrow_mut();
-        //         // atx.borrow_mut().send(.clone()).await.unwrap();
-        // }
-
         // Oddly, GIO's higher level name-watching does not support arg0namespace, only exact names
-        let dbus = dbus.clone();
-        let dbus1 = dbus.clone();
-        let noc_sub = dbus.signal_subscribe(
-            Some("org.freedesktop.DBus"),
-            Some("org.freedesktop.DBus"),
-            Some("NameOwnerChanged"),
-            Some("/org/freedesktop/DBus"),
-            Some("org.mpris"),
-            gio::DBusSignalFlags::MATCH_ARG0_NAMESPACE,
-            move |_bus, _, _, _, _, val| {
-                let (name, olduniq, newuniq) = val.get::<(String, String, String)>().unwrap();
-                let cur_state = cur_state.clone();
-                let atx = atx.clone();
-                let dbus = dbus1.clone();
-                glib::MainContext::default().spawn_local(async move {
+        let noc_sub = {
+            let notifier = notifier.clone();
+            let state = state.clone();
+            let dbus1 = dbus.clone();
+            dbus.signal_subscribe(
+                Some("org.freedesktop.DBus"),
+                Some("org.freedesktop.DBus"),
+                Some("NameOwnerChanged"),
+                Some("/org/freedesktop/DBus"),
+                Some("org.mpris"),
+                gio::DBusSignalFlags::MATCH_ARG0_NAMESPACE,
+                move |_bus, _, _, _, _, val| {
+                    let (name, olduniq, newuniq) = val.get::<(String, String, String)>().unwrap();
                     if newuniq.is_empty() {
-                        let mut stref = cur_state.borrow_mut();
-                        let _ = stref.0.remove(&name);
-                        let _ = stref.1.remove(&name);
-                        atx.borrow_mut().send(stref.0.clone()).await.unwrap();
+                        let _ = subs.borrow_mut().remove(&name);
+                        let _ = state.borrow_mut().remove(&name);
+                        notifier.notify(usize::MAX);
                     } else if olduniq.is_empty() {
-                        Self::add(&dbus, atx, cur_state, name).await;
+                        glib::MainContext::default().spawn_local(Self::add(
+                            dbus1.clone(),
+                            notifier.clone(),
+                            state.clone(),
+                            subs.clone(),
+                            name,
+                        ));
                     }
-                });
-            },
-        );
+                },
+            )
+        };
 
         MediaService {
-            dbus,
+            dbus: dbus.clone(),
             noc_sub: Some(noc_sub),
-            rx,
+            notifier,
+            state,
         }
     }
 
     async fn add(
-        dbus: &gio::DBusConnection,
-        atx: Rc<RefCell<bus::Publisher<HashMap<String, MediaPlayerState>>>>,
-        cur_state: Rc<
-            RefCell<(
-                HashMap<String, MediaPlayerState>,
-                HashMap<String, MediaSubscription>,
-            )>,
-        >,
+        dbus: gio::DBusConnection,
+        notifier: Rc<event_listener::Event>,
+        state: Rc<RefCell<MediaState>>,
+        subs: Rc<RefCell<HashMap<String, MediaSubscription>>>,
         name: String,
     ) {
         if let (Ok(common), Ok(player)) = (
             gio::DBusProxy::new_future(
-                dbus,
+                &dbus,
                 gio::DBusProxyFlags::NONE,
                 None,
                 Some(&name),
@@ -201,7 +205,7 @@ impl MediaService {
             )
             .await,
             gio::DBusProxy::new_future(
-                dbus,
+                &dbus,
                 gio::DBusProxyFlags::NONE,
                 None,
                 Some(&name),
@@ -212,9 +216,9 @@ impl MediaService {
         ) {
             if let Some(initial_state) = MediaPlayerState::query(&common, &player) {
                 let common_sub = {
-                    let cur_state = cur_state.clone();
+                    let state = state.clone();
                     let name = name.clone();
-                    let atx = atx.clone();
+                    let notifier = notifier.clone();
                     common
                         .connect_local("g-properties-changed", true, move |args| {
                             let new_props = args[1]
@@ -223,24 +227,18 @@ impl MediaService {
                                 .unwrap()
                                 .get::<HashMap<String, glib::Variant>>()
                                 .unwrap();
-                            let cur_state = cur_state.clone();
-                            let name = name.clone();
-                            let atx = atx.clone();
-                            glib::MainContext::default().spawn_local(async move {
-                                let mut stref = cur_state.borrow_mut();
-                                if let Some(ref mut obj) = stref.0.get_mut(&name) {
-                                    obj.common_update(new_props);
-                                }
-                                atx.borrow_mut().send(stref.0.clone()).await.unwrap()
-                            });
+                            if let Some(ref mut obj) = state.borrow_mut().get_mut(&name) {
+                                obj.common_update(new_props);
+                            }
+                            notifier.notify(usize::MAX);
                             None
                         })
                         .ok()
                 };
                 let player_sub = {
-                    let cur_state = cur_state.clone();
+                    let state = state.clone();
                     let name = name.clone();
-                    let atx = atx.clone();
+                    let notifier = notifier.clone();
                     player
                         .connect_local("g-properties-changed", true, move |args| {
                             let new_props = args[1]
@@ -249,23 +247,16 @@ impl MediaService {
                                 .unwrap()
                                 .get::<HashMap<String, glib::Variant>>()
                                 .unwrap();
-                            let cur_state = cur_state.clone();
-                            let name = name.clone();
-                            let atx = atx.clone();
-                            glib::MainContext::default().spawn_local(async move {
-                                let mut stref = cur_state.borrow_mut();
-                                if let Some(ref mut obj) = stref.0.get_mut(&name) {
-                                    obj.player_update(new_props);
-                                }
-                                atx.borrow_mut().send(stref.0.clone()).await.unwrap()
-                            });
+                            if let Some(ref mut obj) = state.borrow_mut().get_mut(&name) {
+                                obj.player_update(new_props);
+                            }
+                            notifier.notify(usize::MAX);
                             None
                         })
                         .ok()
                 };
-                let mut stref = cur_state.borrow_mut();
-                stref.0.insert(name.clone(), initial_state);
-                stref.1.insert(
+                state.borrow_mut().insert(name.clone(), initial_state);
+                subs.borrow_mut().insert(
                     name,
                     MediaSubscription {
                         common,
@@ -274,15 +265,19 @@ impl MediaService {
                         player_sub,
                     },
                 );
-                atx.borrow_mut().send(stref.0.clone()).await.unwrap();
+                notifier.notify(usize::MAX);
             }
         } else {
             eprintln!("Failed to get proxies for MPRIS: {}", name);
         }
     }
 
-    pub fn subscribe(&self) -> bus::Subscriber<MediaState> {
-        self.rx.clone()
+    pub fn state(&self) -> Ref<'_, MediaState> {
+        self.state.borrow()
+    }
+
+    pub fn subscribe(&self) -> impl Future<Output = ()> {
+        self.notifier.listen()
     }
 
     pub fn control_player(&self, name: &str, cmd: &str) {

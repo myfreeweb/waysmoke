@@ -3,16 +3,25 @@ use crate::{dock::*, style, svc::power::*, util::apps};
 pub struct PowerDocklet {
     icon: wstk::ImageHandle,
     evl: addeventlistener::State,
-    rx: wstk::bus::Subscriber<svc::power::PowerState>,
+    svc: &'static svc::power::PowerService,
 }
 
 impl PowerDocklet {
     pub fn new(services: &'static svc::Services) -> Self {
         PowerDocklet {
-            icon: icons::icon_from_path(apps::icon("dialog-question")),
+            icon: Self::the_icon(&services.power.state()),
             evl: Default::default(),
-            rx: services.power.subscribe(),
+            svc: &services.power,
         }
+    }
+
+    fn the_icon(st: &svc::power::PowerState) -> wstk::ImageHandle {
+        icons::icon_from_path(apps::icon(match st.total {
+            Some(PowerDeviceState::Battery { ref icon_name, .. }) => {
+                icon_name.trim_end_matches("-symbolic")
+            }
+            _ => "ac-adapter",
+        }))
     }
 }
 
@@ -45,12 +54,8 @@ impl Docklet for PowerDocklet {
     fn update(&mut self, _msg: DockletMsg) {}
 
     async fn run(&mut self) {
-        let st = self.rx.next().await.unwrap();
-        self.icon = icons::icon_from_path(apps::icon(match st.total {
-            Some(PowerDeviceState::Battery { ref icon_name, .. }) => {
-                icon_name.trim_end_matches("-symbolic")
-            }
-            _ => "ac-adapter",
-        }))
+        self.svc.subscribe().await;
+        let st = self.svc.state();
+        self.icon = Self::the_icon(&st);
     }
 }

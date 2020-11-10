@@ -1,5 +1,5 @@
 use crate::{dock::*, style};
-use std::sync::Arc;
+use std::{cell::Ref, sync::Arc};
 
 lazy_static::lazy_static! {
     static ref PLAY_ICON: wstk::ImageHandle =
@@ -35,8 +35,6 @@ pub struct AppDocklet {
         HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
     >,
     toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
-    media_updates: wstk::bus::Subscriber<svc::media::MediaState>,
-    medias: Arc<svc::media::MediaState>,
     media_buttons: Vec<MediaBtns>,
 }
 
@@ -46,7 +44,6 @@ impl AppDocklet {
             .icon()
             .map(icons::icon_from_path)
             .unwrap_or_else(|| UNKNOWN_ICON.clone());
-        let media_updates = services.media.subscribe();
         let toplevel_updates = services.toplevel_updates.clone();
         AppDocklet {
             services,
@@ -58,8 +55,6 @@ impl AppDocklet {
             toplevels_buttons: Default::default(),
             toplevel_updates,
             toplevels: Arc::new(HashMap::new()),
-            media_updates,
-            medias: Arc::new(HashMap::new()),
             media_buttons: Default::default(),
         }
     }
@@ -90,10 +85,12 @@ impl Docklet for AppDocklet {
 
         let mut content = Row::new().push(big_button);
 
-        while self.media_buttons.len() < our_medias(&self.medias, &self.app.id).count() {
+        while self.media_buttons.len()
+            < our_medias(&self.services.media.state(), &self.app.id).count()
+        {
             self.media_buttons.push(Default::default());
         }
-        for (i, ((_, media_data), btns)) in our_medias(&self.medias, &self.app.id)
+        for (i, ((_, media_data), btns)) in our_medias(&self.services.media.state(), &self.app.id)
             .zip(self.media_buttons.iter_mut())
             .enumerate()
         {
@@ -138,7 +135,7 @@ impl Docklet for AppDocklet {
     fn width(&self) -> u16 {
         ICON_SIZE
             + APP_PADDING * 2
-            + our_medias(&self.medias, &self.app.id)
+            + our_medias(&self.services.media.state(), &self.app.id)
                 .fold(0, |acc, _| acc + ICON_SIZE / 2 + APP_PADDING * 2)
     }
 
@@ -205,7 +202,10 @@ impl Docklet for AppDocklet {
             }
             DockletMsg::App(Msg::MediaControl(medi, op)) => {
                 self.services.media.control_player(
-                    our_medias(&self.medias, &self.app.id).nth(medi).unwrap().0,
+                    our_medias(&self.services.media.state(), &self.app.id)
+                        .nth(medi)
+                        .unwrap()
+                        .0,
                     op,
                 );
             }
@@ -217,7 +217,7 @@ impl Docklet for AppDocklet {
         let this = self;
         futures::select! {
             tls = this.toplevel_updates.next().fuse() => this.toplevels = tls.unwrap(),
-            med = this.media_updates.next().fuse() => this.medias = med.unwrap(),
+            () = this.services.media.subscribe().fuse() => (),
         };
     }
 }
@@ -232,7 +232,7 @@ fn our_toplevels<'a>(
 }
 
 fn our_medias<'a>(
-    medias: &'a Arc<svc::media::MediaState>,
+    medias: &'a Ref<'a, svc::media::MediaState>,
     id: &'a String,
 ) -> impl Iterator<Item = (&'a String, &'a svc::media::MediaPlayerState)> {
     medias

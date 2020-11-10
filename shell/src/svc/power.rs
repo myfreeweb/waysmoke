@@ -1,7 +1,11 @@
 use futures::prelude::*;
 use gio::prelude::*;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use wstk::bus;
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    rc::Rc,
+};
+use wstk::event_listener;
 
 #[derive(Debug, Clone)]
 pub enum PowerDeviceState {
@@ -98,11 +102,14 @@ pub struct PowerState {
 
 pub struct PowerService {
     display_device: gio::DBusProxy,
-    rx: bus::Subscriber<PowerState>,
+    notifier: Rc<event_listener::Event>,
+    state: Rc<RefCell<PowerState>>,
 }
 
 impl PowerService {
     pub async fn new(dbus: &gio::DBusConnection) -> PowerService {
+        let notifier = Rc::new(event_listener::Event::new());
+
         let display_device = gio::DBusProxy::new_future(
             dbus,
             gio::DBusProxyFlags::NONE,
@@ -114,37 +121,42 @@ impl PowerService {
         .await
         .unwrap();
 
-        let cur_state = Rc::new(RefCell::new(PowerState {
+        let state = Rc::new(RefCell::new(PowerState {
             total: PowerDeviceState::query(&display_device),
         }));
 
-        let (mut tx, rx) = bus::bounded(1);
-        tx.send(cur_state.borrow().clone()).await.unwrap();
-        let atx = Rc::new(RefCell::new(tx));
-        display_device
-            .connect_local("g-properties-changed", true, move |args| {
-                let new_props = args[1]
-                    .get::<glib::Variant>()
-                    .unwrap()
-                    .unwrap()
-                    .get::<HashMap<String, glib::Variant>>()
-                    .unwrap();
-                let mut stref = cur_state.borrow_mut();
-                if let Some(ref mut total) = stref.total {
-                    total.update(new_props);
-                }
-                let nst = stref.clone();
-                let atx = atx.clone();
-                glib::MainContext::default()
-                    .spawn_local(async move { atx.borrow_mut().send(nst).await.unwrap() });
-                None
-            })
-            .unwrap();
+        {
+            let state = state.clone();
+            let notifier = notifier.clone();
+            display_device
+                .connect_local("g-properties-changed", true, move |args| {
+                    let new_props = args[1]
+                        .get::<glib::Variant>()
+                        .unwrap()
+                        .unwrap()
+                        .get::<HashMap<String, glib::Variant>>()
+                        .unwrap();
+                    if let Some(ref mut total) = state.borrow_mut().total {
+                        total.update(new_props);
+                    }
+                    notifier.notify(usize::MAX);
+                    None
+                })
+                .unwrap();
+        }
 
-        PowerService { display_device, rx }
+        PowerService {
+            display_device,
+            notifier,
+            state,
+        }
     }
 
-    pub fn subscribe(&self) -> bus::Subscriber<PowerState> {
-        self.rx.clone()
+    pub fn state(&self) -> Ref<'_, PowerState> {
+        self.state.borrow()
+    }
+
+    pub fn subscribe(&self) -> impl Future<Output = ()> {
+        self.notifier.listen()
     }
 }
