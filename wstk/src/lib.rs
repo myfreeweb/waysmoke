@@ -29,7 +29,6 @@ pub use iced_core;
 pub use iced_graphics;
 pub use iced_native;
 
-pub use bus_queue::flavors::arc_swap as bus;
 pub use event_listener;
 
 #[macro_export]

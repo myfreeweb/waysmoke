@@ -14,7 +14,6 @@ raw-window-handle = "0.3"
 # wayland-commons = "0.28"
 wayland-client = { version = "0.28", features = ["use_system_lib"] }
 smithay-client-toolkit = { version = "0.12", default-features = false }
-bus_queue = "0.5"
 event-listener = "2"
 
 async-trait = "0.1"
