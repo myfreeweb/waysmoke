@@ -1,4 +1,4 @@
-use bus_queue::flavors::arc_swap as bus;
+use event_listener;
 use futures::prelude::*;
 use smithay_client_toolkit::{
     environment::GlobalHandler,
@@ -14,7 +14,7 @@ pub use smithay_client_toolkit::reexports::protocols::wlr::unstable::foreign_top
 };
 
 use std::{
-    cell::RefCell,
+    cell::{Ref, RefCell},
     collections::HashMap,
     hash::{Hash, Hasher},
     rc::Rc,
@@ -45,24 +45,35 @@ impl ToplevelState {
     }
 }
 
-pub struct ToplevelHandler {
-    global: Option<Attached<toplevel_manager::ZwlrForeignToplevelManagerV1>>,
-    tx: Rc<RefCell<bus::Publisher<HashMap<ToplevelKey, ToplevelState>>>>,
-    rx: bus::Subscriber<HashMap<ToplevelKey, ToplevelState>>,
+pub type ToplevelStates = HashMap<ToplevelKey, ToplevelState>;
+
+pub struct ToplevelService {
+    global: RefCell<Option<Attached<toplevel_manager::ZwlrForeignToplevelManagerV1>>>,
+    notifier: Rc<event_listener::Event>,
+    states: Rc<RefCell<ToplevelStates>>,
 }
 
-impl ToplevelHandler {
-    pub fn new() -> ToplevelHandler {
-        let (tx, rx) = bus::bounded(1);
-        ToplevelHandler {
-            global: None,
-            tx: Rc::new(RefCell::new(tx)),
-            rx,
+impl ToplevelService {
+    pub fn new() -> ToplevelService {
+        ToplevelService {
+            global: RefCell::new(None),
+            notifier: Rc::new(event_listener::Event::new()),
+            states: Rc::new(RefCell::new(HashMap::new())),
         }
+    }
+
+    pub fn state(&self) -> Ref<'_, ToplevelStates> {
+        self.states.borrow()
+    }
+
+    pub fn subscribe(&self) -> impl Future<Output = ()> {
+        self.notifier.listen()
     }
 }
 
-impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelHandler {
+pub struct ToplevelServiceRc(pub Rc<ToplevelService>);
+
+impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelServiceRc {
     fn created(
         &mut self,
         registry: Attached<wl_registry::WlRegistry>,
@@ -71,8 +82,8 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
         _: DispatchData,
     ) {
         let main = registry.bind::<toplevel_manager::ZwlrForeignToplevelManagerV1>(version, id);
-        let states = Rc::new(RefCell::new(HashMap::new()));
-        let tx = self.tx.clone();
+        let states = self.0.states.clone();
+        let notifier = self.0.notifier.clone();
         main.quick_assign(move |_, event, _| match event {
             toplevel_manager::Event::Toplevel { toplevel } => {
                 let mut topl = ToplevelState {
@@ -84,7 +95,7 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
                     state: Vec::new(),
                 };
                 let states = states.clone();
-                let tx = tx.clone();
+                let notifier = notifier.clone();
                 toplevel.quick_assign(move |_, event, _| match event {
                     toplevel_handle::Event::Title { title } => topl.title = title,
                     toplevel_handle::Event::AppId { app_id } => {
@@ -102,22 +113,16 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
                     }
                     toplevel_handle::Event::State { state } => topl.state = state,
                     toplevel_handle::Event::Done => {
-                        let mut states = states.borrow_mut();
-                        states.insert(ToplevelKey(topl.handle.clone()), topl.clone());
-                        let new_states = states.clone();
-                        let tx = tx.clone();
-                        glib::MainContext::default().spawn_local(async move {
-                            tx.borrow_mut().send(new_states).await.unwrap()
-                        });
+                        states
+                            .borrow_mut()
+                            .insert(ToplevelKey(topl.handle.clone()), topl.clone());
+                        notifier.notify(usize::MAX);
                     }
                     toplevel_handle::Event::Closed => {
-                        let mut states = states.borrow_mut();
-                        states.remove(&ToplevelKey(topl.handle.clone()));
-                        let new_states = states.clone();
-                        let tx = tx.clone();
-                        glib::MainContext::default().spawn_local(async move {
-                            tx.borrow_mut().send(new_states).await.unwrap()
-                        });
+                        states
+                            .borrow_mut()
+                            .remove(&ToplevelKey(topl.handle.clone()));
+                        notifier.notify(usize::MAX);
                     }
                     toplevel_handle::Event::Parent { .. } => {}
                     x => panic!("Unknown toplevel event {:?}", x),
@@ -125,33 +130,29 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelH
             }
             x => panic!("Unknown toplevel manager event {:?}", x),
         });
-        self.global = Some((*main).clone())
+        *self.0.global.borrow_mut() = Some((*main).clone())
     }
 
     fn get(&self) -> Option<Attached<toplevel_manager::ZwlrForeignToplevelManagerV1>> {
-        self.global.clone()
+        self.0.global.borrow().clone()
     }
 }
 
-pub trait HasToplevelManager {
-    fn toplevel_updates(&self) -> bus::Subscriber<HashMap<ToplevelKey, ToplevelState>>;
+pub trait HasToplevelService {
+    fn toplevel_service(&self) -> Rc<ToplevelService>;
 }
 
-impl HasToplevelManager for ToplevelHandler {
-    fn toplevel_updates(&self) -> bus::Subscriber<HashMap<ToplevelKey, ToplevelState>> {
-        self.rx.clone()
+impl HasToplevelService for Rc<ToplevelService> {
+    fn toplevel_service(&self) -> Rc<ToplevelService> {
+        self.clone()
     }
 }
 
 macro_rules! toplevel_handler {
     ($env:ident, $field:ident) => {
-        impl HasToplevelManager for $env {
-            fn toplevel_updates(
-                &self,
-            ) -> bus_queue::flavors::arc_swap::Subscriber<
-                std::collections::HashMap<ToplevelKey, ToplevelState>,
-            > {
-                self.$field.toplevel_updates()
+        impl HasToplevelService for $env {
+            fn toplevel_service(&self) -> Rc<ToplevelService> {
+                self.$field.0.clone()
             }
         }
     };

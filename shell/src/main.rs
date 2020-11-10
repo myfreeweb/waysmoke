@@ -27,7 +27,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
 
     let services: &'static _ = Box::leak(Box::new(svc::Services {
         seat: env.get_all_seats()[0].detach(),
-        toplevel_updates: env.with_inner(|i| i.toplevel_updates()),
+        toplevels: env.with_inner(|i| i.toplevel_service()),
         power: svc::power::PowerService::new(&dbus).await,
         media: svc::media::MediaService::new(&dbus).await,
     }));

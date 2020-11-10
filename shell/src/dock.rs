@@ -1,7 +1,7 @@
 use crate::{style, svc, util::*};
 use futures::prelude::*;
 use gio::AppInfoExt; // DesktopAppInfoExt
-use std::{cell::Cell, collections::HashMap};
+use std::cell::Cell;
 use wstk::*;
 
 lazy_static::lazy_static! {
@@ -121,9 +121,6 @@ pub struct Dock {
     is_pointed: bool,
     is_touched: bool,
     hovered_docklet: Option<usize>,
-    toplevel_updates: wstk::bus::Subscriber<
-        HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
-    >,
 
     dock_region: Cell<Rectangle>,
     popover_region: Cell<Rectangle>,
@@ -135,13 +132,11 @@ pub struct Dock {
 impl Dock {
     pub fn new(services: &'static svc::Services) -> Dock {
         let power = power::PowerDocklet::new(services);
-        let toplevel_updates = services.toplevel_updates.clone();
         Dock {
             services,
             is_pointed: false,
             is_touched: false,
             hovered_docklet: None,
-            toplevel_updates,
             dock_region: Default::default(),
             popover_region: Default::default(),
             apps: Vec::new(),
@@ -149,11 +144,10 @@ impl Dock {
         }
     }
 
-    fn update_apps(
-        &mut self,
-        toplevels: HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
-    ) {
+    fn update_apps(&mut self) {
         self.hovered_docklet = None;
+
+        let toplevels = self.services.toplevels.state();
 
         let docked = vec![
             "firefox",
@@ -375,7 +369,7 @@ impl IcedSurface for Dock {
         //       also the 'docklets_mut' has to be inline - if it was a method, rustc couldn't
         //       see inside of it and find that it only touches self.apps and not the rest of self
         let sel = future::select(
-            self.toplevel_updates.next(),
+            self.services.toplevels.subscribe(),
             future::select_all(
                 self.apps
                     .iter_mut()
@@ -384,10 +378,9 @@ impl IcedSurface for Dock {
             ),
         )
         .await;
-        if let future::Either::Left((Some(ref tt), _)) = sel {
-            let xt = tt.clone();
+        if let future::Either::Left(((), _)) = sel {
             drop(sel);
-            self.update_apps((*xt).clone());
+            self.update_apps();
         }
         true
     }

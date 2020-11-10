@@ -1,5 +1,5 @@
 use crate::{dock::*, style};
-use std::{cell::Ref, sync::Arc};
+use std::cell::Ref;
 
 lazy_static::lazy_static! {
     static ref PLAY_ICON: wstk::ImageHandle =
@@ -31,10 +31,6 @@ pub struct AppDocklet {
     evl: addeventlistener::State,
     toplevels_scrollable: iced_native::scrollable::State,
     toplevels_buttons: Vec<iced_native::button::State>,
-    toplevel_updates: wstk::bus::Subscriber<
-        HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>,
-    >,
-    toplevels: Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
     media_buttons: Vec<MediaBtns>,
 }
 
@@ -44,7 +40,6 @@ impl AppDocklet {
             .icon()
             .map(icons::icon_from_path)
             .unwrap_or_else(|| UNKNOWN_ICON.clone());
-        let toplevel_updates = services.toplevel_updates.clone();
         AppDocklet {
             services,
             app,
@@ -53,8 +48,6 @@ impl AppDocklet {
             evl: Default::default(),
             toplevels_scrollable: Default::default(),
             toplevels_buttons: Default::default(),
-            toplevel_updates,
-            toplevels: Arc::new(HashMap::new()),
             media_buttons: Default::default(),
         }
     }
@@ -73,7 +66,9 @@ impl Docklet for AppDocklet {
     fn widget(&mut self) -> Element<DockletMsg> {
         use iced_native::*;
 
-        let running = our_toplevels(&self.toplevels, self.id()).next().is_some();
+        let running = our_toplevels(&self.services.toplevels.state(), self.id())
+            .next()
+            .is_some();
 
         let big_button = Button::new(
             &mut self.button,
@@ -146,11 +141,13 @@ impl Docklet for AppDocklet {
     fn popover(&mut self) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
-        while self.toplevels_buttons.len() < our_toplevels(&self.toplevels, &self.app.id).count() {
+        while self.toplevels_buttons.len()
+            < our_toplevels(&self.services.toplevels.state(), &self.app.id).count()
+        {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
-        for (i, (topl, btn)) in our_toplevels(&self.toplevels, &self.app.id)
+        for (i, (topl, btn)) in our_toplevels(&self.services.toplevels.state(), &self.app.id)
             .zip(self.toplevels_buttons.iter_mut())
             .enumerate()
         {
@@ -184,7 +181,7 @@ impl Docklet for AppDocklet {
     fn update(&mut self, msg: DockletMsg) {
         match msg {
             DockletMsg::App(Msg::ActivateApp) => {
-                for topl in our_toplevels(&self.toplevels, &self.app.id) {
+                for topl in our_toplevels(&self.services.toplevels.state(), &self.app.id) {
                     topl.handle.activate(&self.services.seat);
                     return;
                 }
@@ -194,7 +191,7 @@ impl Docklet for AppDocklet {
                     .unwrap()
             }
             DockletMsg::App(Msg::ActivateToplevel(topli)) => {
-                our_toplevels(&self.toplevels, &self.app.id)
+                our_toplevels(&self.services.toplevels.state(), &self.app.id)
                     .nth(topli)
                     .unwrap()
                     .handle
@@ -216,7 +213,7 @@ impl Docklet for AppDocklet {
     async fn run(&mut self) {
         let this = self;
         futures::select! {
-            tls = this.toplevel_updates.next().fuse() => this.toplevels = tls.unwrap(),
+            () = this.services.toplevels.subscribe().fuse() => (),
             () = this.services.media.subscribe().fuse() => (),
         };
     }
@@ -225,7 +222,7 @@ impl Docklet for AppDocklet {
 // can't just have a method on self because rustc can't see through
 // the function boundary to know which parts of self are actually borrowed
 fn our_toplevels<'a>(
-    toplevels: &'a Arc<HashMap<wstk::toplevels::ToplevelKey, wstk::toplevels::ToplevelState>>,
+    toplevels: &'a Ref<'a, wstk::toplevels::ToplevelStates>,
     id: &'a str,
 ) -> impl Iterator<Item = &'a wstk::toplevels::ToplevelState> {
     toplevels.values().filter(move |topl| topl.matches_id(id))

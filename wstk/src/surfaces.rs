@@ -21,6 +21,7 @@ pub use smithay_client_toolkit::{
     },
     seat::{pointer, with_seat_data},
 };
+use std::rc::Rc;
 
 use futures::channel::mpsc;
 pub use futures::prelude::*;
@@ -30,21 +31,21 @@ use crate::{handle::*, toplevels::*};
 default_environment!(Env,
     fields = [
         layer_shell: SimpleGlobal<layer_shell::ZwlrLayerShellV1>,
-        toplevel_manager: ToplevelHandler,
+        toplevel_service: ToplevelServiceRc,
     ],
     singles = [
         layer_shell::ZwlrLayerShellV1 => layer_shell,
-        toplevel_manager::ZwlrForeignToplevelManagerV1 => toplevel_manager,
+        toplevel_manager::ZwlrForeignToplevelManagerV1 => toplevel_service,
     ],
 );
-toplevel_handler!(Env, toplevel_manager);
+toplevel_handler!(Env, toplevel_service);
 
 pub fn make_env() -> Result<(Environment<Env>, Display, EventQueue), ConnectError> {
     new_default_environment!(
         Env,
         fields = [
             layer_shell: SimpleGlobal::new(),
-            toplevel_manager: ToplevelHandler::new(),
+            toplevel_service: ToplevelServiceRc(Rc::new(ToplevelService::new())),
         ]
     )
 }
