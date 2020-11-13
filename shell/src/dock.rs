@@ -333,11 +333,16 @@ impl IcedSurface for Dock {
                 height: rect.height + n * 2,
             }
         }
+        let hover_zone_height = if self.is_pointed || self.is_touched {
+            BAR_HEIGHT
+        } else {
+            2
+        };
         let bar = Rectangle {
             x: 0,
-            y: (DOCK_AND_GAP_HEIGHT + POPOVER_HEIGHT_MAX) as _,
+            y: (DOCK_AND_GAP_HEIGHT + POPOVER_HEIGHT_MAX + BAR_HEIGHT - hover_zone_height) as _,
             width,
-            height: BAR_HEIGHT as _,
+            height: hover_zone_height as _,
         };
         let mut result = vec![bar];
         if self.is_pointed || self.is_touched {
