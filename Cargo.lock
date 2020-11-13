@@ -136,6 +136,20 @@ name = "bytemuck"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41aa2ec95ca3b5c54cf73c91acf06d24f4495d5f1b1c12506ae3483d646177ac"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28dae23a39becf0b1c8f9198d7e9fc80aaf1ec1ee7428ec570f6a0269e59a9cc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "byteorder"
@@ -474,9 +488,9 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
 name = "dwrote"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcdf488e3a52a7aa30a05732a3e58420e22acb4b2b75635a561fc6ffbcab59ef"
+checksum = "439a1c2ba5611ad3ed731280541d36d2e9c4ac5e7fb818a27b604bdc5a6aa65b"
 dependencies = [
  "lazy_static",
  "libc",
@@ -571,9 +585,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "font-kit"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f953474ebbe3460775ed2da52435477cc029493284d6ceb635598586a2c6298"
+checksum = "4c04f5c358473b358c4bb8e5c72f1a25f51d4ca6ad76b2261e1f3b81937faae7"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -925,9 +939,12 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.9.5"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8637c7ec4fd0776c51eeab3e0d5d1aa7e440ece3fc2ee7d674e13c957287bfc1"
+checksum = "668e725370f2b2243a5f43c6e4be6be3d501fb2441b81f7ee604ef766b5ab91b"
+dependencies = [
+ "version_check",
+]
 
 [[package]]
 name = "glib"
@@ -1082,12 +1099,12 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.2.1"
-source = "git+https://github.com/myfreeweb/iced#2e28eb16b5f1df29f2bedb39f26d6978318d6d1b"
+source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 
 [[package]]
 name = "iced_futures"
 version = "0.1.2"
-source = "git+https://github.com/myfreeweb/iced#2e28eb16b5f1df29f2bedb39f26d6978318d6d1b"
+source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "futures",
  "log",
@@ -1097,7 +1114,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.1.0"
-source = "git+https://github.com/myfreeweb/iced#2e28eb16b5f1df29f2bedb39f26d6978318d6d1b"
+source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -1111,7 +1128,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.2.2"
-source = "git+https://github.com/myfreeweb/iced#2e28eb16b5f1df29f2bedb39f26d6978318d6d1b"
+source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1123,7 +1140,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.1.0"
-source = "git+https://github.com/myfreeweb/iced#2e28eb16b5f1df29f2bedb39f26d6978318d6d1b"
+source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "iced_core",
 ]
@@ -1131,7 +1148,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.2.2"
-source = "git+https://github.com/myfreeweb/iced#2e28eb16b5f1df29f2bedb39f26d6978318d6d1b"
+source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "bytemuck",
  "futures",
@@ -1146,7 +1163,6 @@ dependencies = [
  "resvg",
  "wgpu",
  "wgpu_glyph",
- "zerocopy",
 ]
 
 [[package]]
@@ -1529,9 +1545,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.4.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
+checksum = "13bd41f508810a131401606d54ac32a467c97172d74ba7662562ebba5ad07fa0"
 
 [[package]]
 name = "ordered-float"
@@ -2275,9 +2291,9 @@ checksum = "79bf4d5fc96546fdb73f9827097810bbda93b11a6770ff3a54e1f445d4135787"
 
 [[package]]
 name = "unicode-segmentation"
-version = "1.6.0"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e83e153d1053cbb5a118eeff7fd5be06ed99153f00dbcd8ae310c5fb2b22edc0"
+checksum = "db8716a166f290ff49dabc18b44aa407cb7c6dbe1aa0971b44b8a24b0ca35aae"
 
 [[package]]
 name = "unicode-vo"
