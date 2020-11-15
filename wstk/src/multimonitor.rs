@@ -7,9 +7,9 @@ use futures::{channel::mpsc, Future, FutureExt, StreamExt};
 
 pub struct MultiMonitor<'a, T, F> {
     _osl: output::OutputStatusListener,
-    rx: mpsc::UnboundedReceiver<wl_output::WlOutput>,
+    rx: mpsc::UnboundedReceiver<(wl_output::WlOutput, output::OutputInfo)>,
     instances: Vec<T>,
-    mk: Box<dyn 'a + Fn(wl_output::WlOutput) -> F>,
+    mk: Box<dyn 'a + Fn(wl_output::WlOutput, output::OutputInfo) -> F>,
 }
 
 impl<'a, T, F> MultiMonitor<'a, T, F>
@@ -18,7 +18,7 @@ where
     F: Future<Output = T>,
 {
     pub async fn new(
-        mk: Box<dyn 'a + Fn(wl_output::WlOutput) -> F>,
+        mk: Box<dyn 'a + Fn(wl_output::WlOutput, output::OutputInfo) -> F>,
         env: &'a Environment<Env>,
     ) -> MultiMonitor<'a, T, F> {
         let (tx, rx) = mpsc::unbounded();
@@ -28,7 +28,7 @@ where
             if info.obsolete {
                 return;
             }
-            if let Err(e) = tx.unbounded_send(output) {
+            if let Err(e) = tx.unbounded_send((output, info.clone())) {
                 if !e.is_disconnected() {
                     panic!("Unexpected send error {:?}", e)
                 }
@@ -36,7 +36,11 @@ where
         });
 
         for output in env.get_all_outputs() {
-            instances.push(mk(output).await);
+            if let Some(info) = output::with_output_info(&output, Clone::clone) {
+                instances.push(mk(output, info).await);
+            } else {
+                eprintln!("Could not get output info?");
+            }
         }
 
         MultiMonitor {
@@ -73,10 +77,10 @@ where
                     }
                 }
             },
-            output = this.rx.select_next_some() => {
+            (output, info) = this.rx.select_next_some() => {
                 drop(run_instances);
                 this.instances.push(
-                    (this.mk)(output).await,
+                    (this.mk)(output, info).await,
                 );
             }
         }

@@ -21,8 +21,8 @@ async fn main_(env: &Environment<Env>, display: &Display) {
         media: svc::media::MediaService::new(&dbus).await,
     }));
 
-    let mut mm = MultiMonitor::new(
-        Box::new(|output| {
+    let mut dock_mm = MultiMonitor::new(
+        Box::new(|output, _output_info| {
             IcedInstance::new(
                 dock::Dock::new(services),
                 env.clone(),
@@ -34,7 +34,11 @@ async fn main_(env: &Environment<Env>, display: &Display) {
     )
     .await;
 
-    while mm.run().await {}
+    loop {
+        futures::select! {
+            b = dock_mm.run().fuse() => (),
+        }
+    }
 }
 
 wstk_main!(main_);
