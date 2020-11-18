@@ -9,8 +9,7 @@ use smithay_client_toolkit::{
 };
 
 pub use smithay_client_toolkit::reexports::protocols::wlr::unstable::foreign_toplevel::v1::client::{
-    zwlr_foreign_toplevel_handle_v1 as toplevel_handle,
-    zwlr_foreign_toplevel_manager_v1 as toplevel_manager,
+    zwlr_foreign_toplevel_handle_v1 as toplevel_handle, zwlr_foreign_toplevel_manager_v1 as toplevel_manager,
 };
 
 use std::{
@@ -74,13 +73,7 @@ impl ToplevelService {
 pub struct ToplevelServiceRc(pub Rc<ToplevelService>);
 
 impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelServiceRc {
-    fn created(
-        &mut self,
-        registry: Attached<wl_registry::WlRegistry>,
-        id: u32,
-        version: u32,
-        _: DispatchData,
-    ) {
+    fn created(&mut self, registry: Attached<wl_registry::WlRegistry>, id: u32, version: u32, _: DispatchData) {
         let main = registry.bind::<toplevel_manager::ZwlrForeignToplevelManagerV1>(version, id);
         let states = self.0.states.clone();
         let notifier = self.0.notifier.clone();
@@ -108,9 +101,7 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelS
                         }
                     }
                     toplevel_handle::Event::OutputEnter { output } => topl.outputs.push(output),
-                    toplevel_handle::Event::OutputLeave { output } => {
-                        topl.outputs.retain(|o| *o != output)
-                    }
+                    toplevel_handle::Event::OutputLeave { output } => topl.outputs.retain(|o| *o != output),
                     toplevel_handle::Event::State { state } => topl.state = state,
                     toplevel_handle::Event::Done => {
                         states
@@ -119,9 +110,7 @@ impl GlobalHandler<toplevel_manager::ZwlrForeignToplevelManagerV1> for ToplevelS
                         notifier.notify(usize::MAX);
                     }
                     toplevel_handle::Event::Closed => {
-                        states
-                            .borrow_mut()
-                            .remove(&ToplevelKey(topl.handle.clone()));
+                        states.borrow_mut().remove(&ToplevelKey(topl.handle.clone()));
                         notifier.notify(usize::MAX);
                     }
                     toplevel_handle::Event::Parent { .. } => {}

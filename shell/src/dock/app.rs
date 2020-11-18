@@ -70,19 +70,14 @@ impl Docklet for AppDocklet {
             .next()
             .is_some();
 
-        let big_button = Button::new(
-            &mut self.button,
-            icons::icon_widget(self.icon.clone(), ICON_SIZE),
-        )
-        .style(style::Dock(style::DARK_COLOR))
-        .padding(APP_PADDING)
-        .on_press(DockletMsg::App(Msg::ActivateApp));
+        let big_button = Button::new(&mut self.button, icons::icon_widget(self.icon.clone(), ICON_SIZE))
+            .style(style::Dock(style::DARK_COLOR))
+            .padding(APP_PADDING)
+            .on_press(DockletMsg::App(Msg::ActivateApp));
 
         let mut content = Row::new().push(big_button);
 
-        while self.media_buttons.len()
-            < our_medias(&self.services.media.state(), &self.app.id).count()
-        {
+        while self.media_buttons.len() < our_medias(&self.services.media.state(), &self.app.id).count() {
             self.media_buttons.push(Default::default());
         }
         for (i, ((_, media_data), btns)) in our_medias(&self.services.media.state(), &self.app.id)
@@ -113,8 +108,7 @@ impl Docklet for AppDocklet {
             );
         }
 
-        let listener =
-            AddEventListener::new(&mut self.evl, content).on_pointer_enter(DockletMsg::Hover);
+        let listener = AddEventListener::new(&mut self.evl, content).on_pointer_enter(DockletMsg::Hover);
 
         Container::new(listener)
             .center_x()
@@ -141,9 +135,7 @@ impl Docklet for AppDocklet {
     fn popover(&mut self) -> Option<Element<DockletMsg>> {
         use iced_native::*;
 
-        while self.toplevels_buttons.len()
-            < our_toplevels(&self.services.toplevels.state(), &self.app.id).count()
-        {
+        while self.toplevels_buttons.len() < our_toplevels(&self.services.toplevels.state(), &self.app.id).count() {
             self.toplevels_buttons.push(Default::default());
         }
         let mut btns = Scrollable::new(&mut self.toplevels_scrollable).spacing(2);
@@ -185,10 +177,7 @@ impl Docklet for AppDocklet {
                     topl.handle.activate(&self.services.seat);
                     return;
                 }
-                self.app
-                    .info
-                    .launch::<gio::AppLaunchContext>(&[], None)
-                    .unwrap()
+                self.app.info.launch::<gio::AppLaunchContext>(&[], None).unwrap()
             }
             DockletMsg::App(Msg::ActivateToplevel(topli)) => {
                 our_toplevels(&self.services.toplevels.state(), &self.app.id)

@@ -23,12 +23,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
 
     let mut dock_mm = MultiMonitor::new(
         Box::new(|output, _output_info| {
-            IcedInstance::new(
-                dock::Dock::new(services),
-                env.clone(),
-                display.clone(),
-                output,
-            )
+            IcedInstance::new(dock::Dock::new(services), env.clone(), display.clone(), output)
         }),
         &env,
     )
@@ -36,7 +31,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
 
     loop {
         futures::select! {
-            b = dock_mm.run().fuse() => (),
+            _ = dock_mm.run().fuse() => (),
         }
     }
 }

@@ -130,9 +130,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
     }
 
     fn update_input_region(&mut self) {
-        let reg = self
-            .surface
-            .input_region(self.size.width as _, self.size.height as _);
+        let reg = self.surface.input_region(self.size.width as _, self.size.height as _);
         if reg != self.prev_input_region {
             if let Some(ref rects) = reg {
                 let wlreg = self.parent.create_region();
@@ -190,12 +188,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
         let swap_chain = self.swap_chain.as_mut().unwrap();
 
-        let mut user_interface = UserInterface::build(
-            self.surface.view(),
-            self.size,
-            self.cache.clone(),
-            &mut self.renderer,
-        );
+        let mut user_interface =
+            UserInterface::build(self.surface.view(), self.size, self.cache.clone(), &mut self.renderer);
         let messages = user_interface.update(
             &self.queue.drain(..).collect::<Vec<_>>(),
             self.cursor_position,
@@ -238,12 +232,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             }
             self.parent.flush();
 
-            let mut user_interface = UserInterface::build(
-                self.surface.view(),
-                self.size,
-                temp_cache,
-                &mut self.renderer,
-            );
+            let mut user_interface =
+                UserInterface::build(self.surface.view(), self.size, temp_cache, &mut self.renderer);
             let (primitive, mi) = user_interface.draw(&mut self.renderer, self.cursor_position);
             let dmg = self.prev_prim.damage(&primitive);
             self.prev_prim = primitive.clone();
@@ -285,11 +275,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn on_layer_event(&mut self, event: layer_surface::Event) -> bool {
         match event {
-            layer_surface::Event::Configure {
-                serial,
-                width,
-                height,
-            } => {
+            layer_surface::Event::Configure { serial, width, height } => {
                 self.parent.layer_surface.ack_configure(serial);
 
                 self.scale = get_surface_scale_factor(&self.parent.wl_surface);
@@ -308,9 +294,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn on_pointer_event(&mut self, event: wl_pointer::Event) {
         match event {
-            wl_pointer::Event::Enter {
-                surface, serial, ..
-            } => {
+            wl_pointer::Event::Enter { surface, serial, .. } => {
                 if self.parent.wl_surface.detach() != surface {
                     return;
                 }
@@ -320,9 +304,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.last_ptr_serial = Some(serial);
                 self.apply_mouse_interaction(self.last_mouse_interaction);
             }
-            wl_pointer::Event::Leave {
-                surface, serial, ..
-            } => {
+            wl_pointer::Event::Leave { surface, serial, .. } => {
                 if self.parent.wl_surface.detach() != surface {
                     return;
                 }
@@ -331,10 +313,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.last_ptr_serial = Some(serial);
             }
             wl_pointer::Event::Button {
-                button,
-                state,
-                serial,
-                ..
+                button, state, serial, ..
             } => {
                 if !self.ptr_active {
                     return;
@@ -354,40 +333,36 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.last_ptr_serial = Some(serial);
             }
             wl_pointer::Event::Motion {
-                surface_x,
-                surface_y,
-                ..
+                surface_x, surface_y, ..
             } => {
                 if !self.ptr_active {
                     return;
                 }
                 self.cursor_position = Point::new(surface_x as _, surface_y as _);
-                self.queue
-                    .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                        x: surface_x as _,
-                        y: surface_y as _,
-                    }));
+                self.queue.push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                    x: surface_x as _,
+                    y: surface_y as _,
+                }));
                 self.last_ptr_serial = None;
             }
             wl_pointer::Event::Axis { axis, value, .. } => {
                 if !self.ptr_active {
                     return;
                 }
-                self.queue
-                    .push(iced_native::Event::Mouse(mouse::Event::WheelScrolled {
-                        delta: mouse::ScrollDelta::Pixels {
-                            x: if axis == wl_pointer::Axis::HorizontalScroll {
-                                -value as _
-                            } else {
-                                0.0
-                            },
-                            y: if axis == wl_pointer::Axis::VerticalScroll {
-                                -value as _
-                            } else {
-                                0.0
-                            },
+                self.queue.push(iced_native::Event::Mouse(mouse::Event::WheelScrolled {
+                    delta: mouse::ScrollDelta::Pixels {
+                        x: if axis == wl_pointer::Axis::HorizontalScroll {
+                            -value as _
+                        } else {
+                            0.0
                         },
-                    }));
+                        y: if axis == wl_pointer::Axis::VerticalScroll {
+                            -value as _
+                        } else {
+                            0.0
+                        },
+                    },
+                }));
             }
             wl_pointer::Event::AxisSource { .. } => {}
             wl_pointer::Event::AxisStop { .. } => {}
@@ -404,9 +379,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn on_touch_event(&mut self, event: wl_touch::Event) {
         match event {
-            wl_touch::Event::Down {
-                surface, id, x, y, ..
-            } => {
+            wl_touch::Event::Down { surface, id, x, y, .. } => {
                 if self.parent.wl_surface.detach() != surface {
                     return;
                 }
@@ -417,11 +390,10 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.ptr_active = true;
                 self.leave_timeout = None;
                 self.cursor_position = Point::new(x as _, y as _);
-                self.queue
-                    .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                        x: x as _,
-                        y: y as _,
-                    }));
+                self.queue.push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                    x: x as _,
+                    y: y as _,
+                }));
                 self.surface.on_touch_enter().await;
             }
             wl_touch::Event::Motion { id, x, y, .. } => {
@@ -429,25 +401,22 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                     return;
                 }
                 self.cursor_position = Point::new(x as _, y as _);
-                self.queue
-                    .push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                        x: x as _,
-                        y: y as _,
-                    }));
+                self.queue.push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
+                    x: x as _,
+                    y: y as _,
+                }));
             }
             wl_touch::Event::Up { id, .. } => {
                 if self.touch_point != Some(id) {
                     return;
                 }
                 self.touch_point = None;
-                self.queue
-                    .push(iced_native::Event::Mouse(mouse::Event::ButtonPressed(
-                        mouse::Button::Left,
-                    )));
-                self.queue
-                    .push(iced_native::Event::Mouse(mouse::Event::ButtonReleased(
-                        mouse::Button::Left,
-                    )));
+                self.queue.push(iced_native::Event::Mouse(mouse::Event::ButtonPressed(
+                    mouse::Button::Left,
+                )));
+                self.queue.push(iced_native::Event::Mouse(mouse::Event::ButtonReleased(
+                    mouse::Button::Left,
+                )));
                 self.touch_leave = true;
             }
             wl_touch::Event::Frame { .. } => {

@@ -47,11 +47,7 @@ pub trait Docklet {
 mod app;
 mod power;
 
-fn popover<'a>(
-    icon_offset: i16,
-    content: Element<'a, Msg>,
-    popover_region: &'a Cell<Rectangle>,
-) -> Element<'a, Msg> {
+fn popover<'a>(icon_offset: i16, content: Element<'a, Msg>, popover_region: &'a Cell<Rectangle>) -> Element<'a, Msg> {
     use iced_graphics::{
         triangle::{Mesh2D, Vertex2D},
         Primitive,
@@ -96,17 +92,11 @@ fn popover<'a>(
 
     let mut offset_row = Row::new().height(Length::Shrink);
     if icon_offset < 0 {
-        offset_row = offset_row.push(Space::new(
-            Length::Units(-icon_offset as _),
-            Length::Units(0),
-        ));
+        offset_row = offset_row.push(Space::new(Length::Units(-icon_offset as _), Length::Units(0)));
     }
     offset_row = offset_row.push(content_col);
     if icon_offset > 0 {
-        offset_row = offset_row.push(Space::new(
-            Length::Units(icon_offset as _),
-            Length::Units(0),
-        ));
+        offset_row = offset_row.push(Space::new(Length::Units(icon_offset as _), Length::Units(0)));
     }
     Container::new(offset_row)
         .width(Length::Fill)
@@ -167,21 +157,18 @@ impl Dock {
 
         for topl in toplevels.values() {
             if self.apps.iter().find(|a| topl.matches_id(a.id())).is_none() {
-                if let Some(app) =
-                    app::AppDocklet::from_id(self.services, &topl.app_id).or_else(|| {
-                        topl.gtk_app_id
-                            .as_ref()
-                            .and_then(|gid| app::AppDocklet::from_id(self.services, &gid))
-                    })
-                {
+                if let Some(app) = app::AppDocklet::from_id(self.services, &topl.app_id).or_else(|| {
+                    topl.gtk_app_id
+                        .as_ref()
+                        .and_then(|gid| app::AppDocklet::from_id(self.services, &gid))
+                }) {
                     self.apps.push(app);
                 }
             }
         }
 
         self.apps.retain(|a| {
-            docked.iter().any(|id| a.id() == *id)
-                || toplevels.values().any(|topl| topl.matches_id(a.id()))
+            docked.iter().any(|id| a.id() == *id) || toplevels.values().any(|topl| topl.matches_id(a.id()))
         });
     }
 
@@ -193,18 +180,13 @@ impl Dock {
     }
 
     fn width(&self) -> u16 {
-        let (wid, cnt) = self
-            .docklets()
-            .fold((0, 0), |(w, c), d| (w + d.width(), c + 1));
+        let (wid, cnt) = self.docklets().fold((0, 0), |(w, c), d| (w + d.width(), c + 1));
         wid + DOCK_PADDING * (std::cmp::max(cnt as u16, 1) - 1) + DOCK_PADDING * 2
     }
 
     fn center_of_docklet(&self, id: usize) -> u16 {
         DOCK_PADDING
-            + self
-                .docklets()
-                .take(id)
-                .fold(0, |x, d| x + d.width() + DOCK_PADDING)
+            + self.docklets().take(id).fold(0, |x, d| x + d.width() + DOCK_PADDING)
             + self.docklets().nth(id).unwrap().width() / 2
     }
 
@@ -219,15 +201,9 @@ impl Dock {
 
 impl DesktopSurface for Dock {
     fn setup_lsh(&self, layer_surface: &Main<layer_surface::ZwlrLayerSurfaceV1>) {
-        layer_surface.set_anchor(
-            layer_surface::Anchor::Left
-                | layer_surface::Anchor::Right
-                | layer_surface::Anchor::Bottom,
-        );
-        layer_surface.set_size(
-            0,
-            (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT + POPOVER_HEIGHT_MAX) as _,
-        );
+        layer_surface
+            .set_anchor(layer_surface::Anchor::Left | layer_surface::Anchor::Right | layer_surface::Anchor::Bottom);
+        layer_surface.set_size(0, (BAR_HEIGHT + DOCK_AND_GAP_HEIGHT + POPOVER_HEIGHT_MAX) as _);
         layer_surface.set_exclusive_zone(BAR_HEIGHT as _);
     }
 }
@@ -246,9 +222,7 @@ impl IcedSurface for Dock {
         if let Some(docklet_idx) = self.hovered_docklet() {
             let our_center = self.center_of_docklet(docklet_idx);
             let docklet = self.docklets().nth(docklet_idx).unwrap();
-            if let Some(oh) =
-                unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.popover()
-            {
+            if let Some(oh) = unsafe { &mut *(docklet as *const dyn Docklet as *mut dyn Docklet) }.popover() {
                 let i = oh.map(move |m| Msg::IdxMsg(docklet_idx, m)).into();
                 col = col.push(popover(
                     (dock_width as i16 / 2 - our_center as i16) * 2, // XXX: why is the *2 needed?
@@ -294,9 +268,7 @@ impl IcedSurface for Dock {
             .height(Length::Units(DOCK_HEIGHT))
             .center_x();
 
-            col = col
-                .push(dock)
-                .push(Space::with_height(Length::Units(DOCK_GAP)));
+            col = col.push(dock).push(Space::with_height(Length::Units(DOCK_GAP)));
         } else {
             col = col.push(Space::with_height(Length::Units(DOCK_AND_GAP_HEIGHT)));
         }

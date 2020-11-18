@@ -4,15 +4,11 @@ pub use smithay_client_toolkit::{
     get_surface_scale_factor, output,
     reexports::{
         client::{
-            protocol::{
-                wl_compositor, wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface,
-                wl_touch,
-            },
+            protocol::{wl_compositor, wl_output, wl_pointer, wl_region, wl_seat, wl_shm, wl_surface, wl_touch},
             Attached, ConnectError, Display, EventQueue, Interface, Main, Proxy,
         },
         protocols::wlr::unstable::foreign_toplevel::v1::client::{
-            zwlr_foreign_toplevel_handle_v1 as toplevel_handle,
-            zwlr_foreign_toplevel_manager_v1 as toplevel_manager,
+            zwlr_foreign_toplevel_handle_v1 as toplevel_handle, zwlr_foreign_toplevel_manager_v1 as toplevel_manager,
         },
         protocols::wlr::unstable::layer_shell::v1::client::{
             zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
@@ -120,9 +116,7 @@ impl DesktopInstance {
     }
 
     pub fn create_region(&self) -> Main<wl_region::WlRegion> {
-        self.env
-            .require_global::<wl_compositor::WlCompositor>()
-            .create_region()
+        self.env.require_global::<wl_compositor::WlCompositor>().create_region()
     }
 
     pub fn set_input_region(&self, region: Main<wl_region::WlRegion>) {

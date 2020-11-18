@@ -4,10 +4,7 @@ use smithay_client_toolkit::reexports::client::{
     Proxy,
 };
 
-pub struct ToRWH(
-    pub Proxy<wl_surface::WlSurface>,
-    pub Proxy<wl_display::WlDisplay>,
-);
+pub struct ToRWH(pub Proxy<wl_surface::WlSurface>, pub Proxy<wl_display::WlDisplay>);
 
 unsafe impl HasRawWindowHandle for ToRWH {
     fn raw_window_handle(&self) -> RawWindowHandle {

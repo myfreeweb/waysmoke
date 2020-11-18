@@ -131,8 +131,7 @@ pub trait Renderer: iced_native::Renderer {
     ) -> Self::Output;
 }
 
-impl<'a, Message, Renderer> From<AddEventListener<'a, Message, Renderer>>
-    for Element<'a, Message, Renderer>
+impl<'a, Message, Renderer> From<AddEventListener<'a, Message, Renderer>> for Element<'a, Message, Renderer>
 where
     Renderer: 'a + self::Renderer,
     Message: 'a + Clone,

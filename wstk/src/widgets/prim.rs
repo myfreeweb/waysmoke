@@ -41,11 +41,7 @@ where
         self.height
     }
 
-    fn layout(
-        &self,
-        _renderer: &iced_graphics::Renderer<Backend>,
-        limits: &layout::Limits,
-    ) -> layout::Node {
+    fn layout(&self, _renderer: &iced_graphics::Renderer<Backend>, limits: &layout::Limits) -> layout::Node {
         let limits = limits.loose().width(self.width).height(self.height);
         layout::Node::new(limits.resolve(Size::INFINITY))
     }

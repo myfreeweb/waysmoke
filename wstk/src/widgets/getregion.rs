@@ -88,13 +88,7 @@ where
     ) -> Renderer::Output {
         let child_layout = layout.children().next().unwrap();
         self.state.set(child_layout.bounds());
-        renderer.draw(
-            defaults,
-            cursor_position,
-            viewport,
-            &self.content,
-            child_layout,
-        )
+        renderer.draw(defaults, cursor_position, viewport, &self.content, child_layout)
     }
 
     fn hash_layout(&self, state: &mut Hasher) {
@@ -116,8 +110,7 @@ pub trait Renderer: iced_native::Renderer {
     ) -> Self::Output;
 }
 
-impl<'a, Message, Renderer> From<GetRegion<'a, Message, Renderer>>
-    for Element<'a, Message, Renderer>
+impl<'a, Message, Renderer> From<GetRegion<'a, Message, Renderer>> for Element<'a, Message, Renderer>
 where
     Renderer: 'a + self::Renderer,
     Message: 'a + Clone,

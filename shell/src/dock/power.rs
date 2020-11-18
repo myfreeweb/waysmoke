@@ -17,9 +17,7 @@ impl PowerDocklet {
 
     fn the_icon(st: &svc::power::PowerState) -> wstk::ImageHandle {
         icons::icon_from_path(apps::icon(match st.total {
-            Some(PowerDeviceState::Battery { ref icon_name, .. }) => {
-                icon_name.trim_end_matches("-symbolic")
-            }
+            Some(PowerDeviceState::Battery { ref icon_name, .. }) => icon_name.trim_end_matches("-symbolic"),
             _ => "ac-adapter",
         }))
     }
@@ -32,8 +30,7 @@ impl Docklet for PowerDocklet {
 
         let img = icons::icon_widget(self.icon.clone(), ICON_SIZE);
 
-        let listener =
-            AddEventListener::new(&mut self.evl, img).on_pointer_enter(DockletMsg::Hover);
+        let listener = AddEventListener::new(&mut self.evl, img).on_pointer_enter(DockletMsg::Hover);
 
         Container::new(listener)
             .center_x()

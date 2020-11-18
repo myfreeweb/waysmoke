@@ -30,27 +30,11 @@ impl PowerDeviceState {
             }),
             2 => Some(PowerDeviceState::Battery {
                 icon_name: dev.get_cached_property("IconName").unwrap().get().unwrap(),
-                percentage: dev
-                    .get_cached_property("Percentage")
-                    .unwrap()
-                    .get()
-                    .unwrap(),
+                percentage: dev.get_cached_property("Percentage").unwrap().get().unwrap(),
                 energy: dev.get_cached_property("Energy").unwrap().get().unwrap(),
-                energy_empty: dev
-                    .get_cached_property("EnergyEmpty")
-                    .unwrap()
-                    .get()
-                    .unwrap(),
-                energy_full: dev
-                    .get_cached_property("EnergyFull")
-                    .unwrap()
-                    .get()
-                    .unwrap(),
-                energy_rate: dev
-                    .get_cached_property("EnergyRate")
-                    .unwrap()
-                    .get()
-                    .unwrap(),
+                energy_empty: dev.get_cached_property("EnergyEmpty").unwrap().get().unwrap(),
+                energy_full: dev.get_cached_property("EnergyFull").unwrap().get().unwrap(),
+                energy_rate: dev.get_cached_property("EnergyRate").unwrap().get().unwrap(),
             }),
             _ => None, // TODO more
         }

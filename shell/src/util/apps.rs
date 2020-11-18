@@ -27,12 +27,9 @@ impl PartialEq for App {
 impl App {
     pub fn lookup(app_id: &str) -> Option<App> {
         // https://gitlab.gnome.org/GNOME/gnome-shell/-/blob/68745328df0b401ef08caec05e4d297d0a9e36b7/src/shell-app-system.c#L373-377
-        if let Some(info) = gio::DesktopAppInfo::new(&format!("{}.desktop", app_id)).or_else(|| {
-            gio::DesktopAppInfo::new(&format!(
-                "{}.desktop",
-                app_id.to_ascii_lowercase().replace(' ', "-")
-            ))
-        }) {
+        if let Some(info) = gio::DesktopAppInfo::new(&format!("{}.desktop", app_id))
+            .or_else(|| gio::DesktopAppInfo::new(&format!("{}.desktop", app_id.to_ascii_lowercase().replace(' ', "-"))))
+        {
             Some(App {
                 id: app_id.to_owned(),
                 info,

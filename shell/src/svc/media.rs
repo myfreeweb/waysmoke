@@ -38,25 +38,15 @@ pub struct MediaPlayerState {
 impl MediaPlayerState {
     fn query(common: &gio::DBusProxy, player: &gio::DBusProxy) -> Option<MediaPlayerState> {
         Some(MediaPlayerState {
-            desktop_entry: common
-                .get_cached_property("DesktopEntry")
-                .and_then(|e| e.get()),
+            desktop_entry: common.get_cached_property("DesktopEntry").and_then(|e| e.get()),
             status: player
                 .get_cached_property("PlaybackStatus")
                 .and_then(|e| e.get::<String>())
                 .and_then(|e| PlaybackStatus::parse(&e))?,
-            can_prev: player
-                .get_cached_property("CanGoPrevious")
-                .and_then(|e| e.get())?,
-            can_next: player
-                .get_cached_property("CanGoNext")
-                .and_then(|e| e.get())?,
-            can_play: player
-                .get_cached_property("CanPlay")
-                .and_then(|e| e.get())?,
-            can_pause: player
-                .get_cached_property("CanPause")
-                .and_then(|e| e.get())?,
+            can_prev: player.get_cached_property("CanGoPrevious").and_then(|e| e.get())?,
+            can_next: player.get_cached_property("CanGoNext").and_then(|e| e.get())?,
+            can_play: player.get_cached_property("CanPlay").and_then(|e| e.get())?,
+            can_pause: player.get_cached_property("CanPause").and_then(|e| e.get())?,
         })
     }
 
@@ -138,14 +128,7 @@ impl MediaService {
             .0;
 
         for name in names.into_iter().filter(|n| n.starts_with("org.mpris.")) {
-            Self::add(
-                dbus.clone(),
-                notifier.clone(),
-                state.clone(),
-                subs.clone(),
-                name,
-            )
-            .await;
+            Self::add(dbus.clone(), notifier.clone(), state.clone(), subs.clone(), name).await;
         }
 
         // Oddly, GIO's higher level name-watching does not support arg0namespace, only exact names

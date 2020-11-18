@@ -1,7 +1,5 @@
 use futures::channel::{mpsc, oneshot};
-use smithay_client_toolkit::reexports::client::{
-    EventQueue, Interface, Main, MessageGroup, Proxy, ProxyMap,
-};
+use smithay_client_toolkit::reexports::client::{EventQueue, Interface, Main, MessageGroup, Proxy, ProxyMap};
 
 /// Enables Wayland event dispatch on the glib event loop. Requires 'static :(
 pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
