@@ -23,7 +23,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
 
     let mut dock_mm = MultiMonitor::new(
         Box::new(|output, _output_info| {
-            IcedInstance::new(dock::Dock::new(services), env.clone(), display.clone(), output)
+            IcedInstance::new(dock::Dock::new(services), env.clone(), display.clone(), output).boxed_local()
         }),
         &env,
     )

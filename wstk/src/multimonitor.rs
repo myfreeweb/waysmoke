@@ -3,24 +3,23 @@ use crate::{
     surfaces::{output, wl_output, Env, Environment},
 };
 use async_trait::async_trait;
-use futures::{channel::mpsc, Future, FutureExt, StreamExt};
+use futures::{channel::mpsc, future::LocalBoxFuture, Future, FutureExt, StreamExt};
 
-pub struct MultiMonitor<'a, T, F> {
+pub struct MultiMonitor<'a, T> {
     _osl: output::OutputStatusListener,
     rx: mpsc::UnboundedReceiver<(wl_output::WlOutput, output::OutputInfo)>,
     instances: Vec<T>,
-    mk: Box<dyn 'a + Fn(wl_output::WlOutput, output::OutputInfo) -> F>,
+    mk: Box<dyn 'a + Fn(wl_output::WlOutput, output::OutputInfo) -> LocalBoxFuture<'a, T>>,
 }
 
-impl<'a, T, F> MultiMonitor<'a, T, F>
+impl<'a, T> MultiMonitor<'a, T>
 where
     T: Runnable,
-    F: Future<Output = T>,
 {
     pub async fn new(
-        mk: Box<dyn 'a + Fn(wl_output::WlOutput, output::OutputInfo) -> F>,
+        mk: Box<dyn 'a + Fn(wl_output::WlOutput, output::OutputInfo) -> LocalBoxFuture<'a, T>>,
         env: &'a Environment<Env>,
-    ) -> MultiMonitor<'a, T, F> {
+    ) -> MultiMonitor<'a, T> {
         let (tx, rx) = mpsc::unbounded();
         let mut instances = Vec::new();
 
@@ -53,10 +52,9 @@ where
 }
 
 #[async_trait(?Send)]
-impl<'a, T, F> Runnable for MultiMonitor<'a, T, F>
+impl<'a, T> Runnable for MultiMonitor<'a, T>
 where
     T: Runnable,
-    F: Future<Output = T>,
 {
     async fn run(&mut self) -> bool {
         let this = self; // argh macro weirdness
