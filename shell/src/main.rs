@@ -11,13 +11,13 @@ async fn main_(env: &Environment<Env>, display: &Display) {
         gio::ApplicationFlags::default(),
     );
     app.register::<gio::Cancellable>(None).unwrap();
-    let dbus = app.get_dbus_connection().unwrap();
+    let session_bus = app.get_dbus_connection().unwrap();
 
     let services: &'static _ = Box::leak(Box::new(svc::Services {
         seat: env.get_all_seats()[0].detach(),
         toplevels: env.with_inner(|i| i.toplevel_service()),
-        power: svc::power::PowerService::new(&dbus).await,
-        media: svc::media::MediaService::new(&dbus).await,
+        power: svc::power::PowerService::new(&session_bus).await,
+        media: svc::media::MediaService::new(&session_bus).await,
     }));
 
     let mut dock_mm = MultiMonitor::new(
