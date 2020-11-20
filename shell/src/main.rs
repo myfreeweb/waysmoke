@@ -2,7 +2,6 @@ use gio::ApplicationExt;
 use wstk::*;
 
 mod dock;
-mod style;
 mod svc;
 mod util;
 

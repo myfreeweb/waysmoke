@@ -23,6 +23,8 @@ pub use iced::*;
 pub mod widgets;
 pub use widgets::*;
 
+pub mod style;
+
 pub mod handle;
 
 pub use iced_core;
