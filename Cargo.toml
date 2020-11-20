@@ -2,6 +2,7 @@
 members = [
 	"wstk",
 	"shell",
+	"pkagent",
 ]
 
 [profile.dev]
@@ -27,6 +28,14 @@ glib = { git = "https://github.com/gtk-rs/glib" }
 glib-sys = { git = "https://github.com/gtk-rs/sys" }
 gobject-sys = { git = "https://github.com/gtk-rs/sys" }
 
+# patch: avoid lifetime https://github.com/Smithay/client-toolkit/pull/163
+smithay-client-toolkit = { git = "https://github.com/myfreeweb/client-toolkit", branch = "smallvec" }
+
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
 wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
 wgpu-types = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
+
+# polkit-sys = { path = "../polkit-rs/polkit-sys/" }
+# polkit = { path = "../polkit-rs/polkit/" }
+# polkit-agent-sys = { path = "../polkit-rs/polkit-agent-sys/" }
+# polkit-agent = { path = "../polkit-rs/polkit-agent/" }

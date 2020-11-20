@@ -65,3 +65,18 @@ impl button::StyleSheet for Toplevel {
         }
     }
 }
+
+pub struct Dialog;
+
+impl container::StyleSheet for Dialog {
+    fn style(&self) -> container::Style {
+        container::Style {
+            background: Some(Background::Color(Color::from_rgba8(0, 0, 0, 0.95))),
+            border_width: 1,
+            border_color: Color::WHITE,
+            border_radius: 3,
+            text_color: Some(Color::WHITE),
+            ..container::Style::default()
+        }
+    }
+}

@@ -1,0 +1,15 @@
+[package]
+name = "waysmoke-pkagent"
+version = "2020.5.0"
+authors = ["Greg V <greg@unrelenting.technology>"]
+edition = "2018"
+
+[dependencies]
+fragile = "1"
+futures = "0.3"
+glib = "=0.10.0"
+gio = { version = "=0.9.0", features = ["v2_46"] }
+polkit = "0"
+polkit-agent = "0"
+
+wstk = { path = "../wstk" }

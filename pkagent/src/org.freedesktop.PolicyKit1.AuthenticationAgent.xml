@@ -1,0 +1,17 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+	<interface name="org.freedesktop.PolicyKit1.AuthenticationAgent">
+		<method name="BeginAuthentication">
+			<arg type="s" name="action_id" direction="in"/>
+			<arg type="s" name="message" direction="in"/>
+			<arg type="s" name="icon_name" direction="in"/>
+			<arg type="a{ss}" name="details" direction="in"/>
+			<arg type="s" name="cookie" direction="in"/>
+			<arg type="a(sa{sv})" name="identities" direction="in"/>
+		</method>
+
+		<method name="CancelAuthentication">
+			<arg type="s" name="cookie" direction="in"/>
+		</method>
+	</interface>
+</node>
