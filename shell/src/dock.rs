@@ -340,7 +340,7 @@ impl IcedSurface for Dock {
         }
     }
 
-    async fn run(&mut self) -> bool {
+    async fn run(&mut self) -> Action {
         // ARGH: avoiding multiple mutable borrows is so hard in a situation like this!
         //       even sel's Drop (!) mutably borrows self.apps, hence the clone/drop dance.
         //       also the 'docklets_mut' has to be inline - if it was a method, rustc couldn't
@@ -359,7 +359,7 @@ impl IcedSurface for Dock {
             drop(sel);
             self.update_apps();
         }
-        true
+        Action::Rerender
     }
 
     async fn on_pointer_enter(&mut self) {

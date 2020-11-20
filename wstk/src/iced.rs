@@ -11,6 +11,13 @@ pub use futures::{channel::mpsc, prelude::*};
 use crate::{event_loop::*, run::*, surfaces::*};
 
 #[derive(Clone)]
+pub enum Action {
+    DoNothing,
+    Rerender,
+    Close,
+}
+
+#[derive(Clone)]
 pub enum ImageHandle {
     Vector(iced_native::svg::Handle),
     Raster(iced_native::image::Handle),
@@ -29,7 +36,7 @@ pub trait IcedSurface {
     fn retained_images(&mut self) -> Vec<ImageHandle>;
 
     async fn update(&mut self, message: Self::Message);
-    async fn run(&mut self) -> bool;
+    async fn run(&mut self) -> Action;
 
     async fn on_pointer_enter(&mut self) {}
     async fn on_pointer_leave(&mut self) {}
@@ -444,9 +451,13 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
             ev = this.ptr_events.select_next_some() => this.on_pointer_event(ev).await,
             ev = this.touch_events.select_next_some() => this.on_touch_event(ev).await,
             sc = this.parent.scale_rx.select_next_some() => this.on_scale(sc).await,
-            up = this.surface.run().fuse() => if up == true {
-                this.parent.flush();
-                this.render().await
+            ac = this.surface.run().fuse() => match ac {
+                Action::DoNothing => (),
+                Action::Rerender => {
+                    this.parent.flush();
+                    this.render().await
+                },
+                Action::Close => return false,
             },
             () = leave_timeout => {
                 this.leave_timeout = None;
