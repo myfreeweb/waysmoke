@@ -1,5 +1,8 @@
 use futures::channel::{mpsc, oneshot};
-use smithay_client_toolkit::reexports::client::{EventQueue, Interface, Main, MessageGroup, Proxy, ProxyMap};
+use smithay_client_toolkit::{
+    reexports::client::{protocol::wl_seat, Attached, EventQueue, Interface, Main, MessageGroup, Proxy, ProxyMap},
+    seat,
+};
 
 /// Enables Wayland event dispatch on the glib event loop. Requires 'static :(
 pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
@@ -57,5 +60,19 @@ where
         }
         ()
     });
+    rx
+}
+
+/// Creates a mpsc channel for a Wayland object's events.
+pub fn wayland_keyboard_chan(seat: &Attached<wl_seat::WlSeat>) -> mpsc::UnboundedReceiver<seat::keyboard::Event> {
+    let (tx, rx) = mpsc::unbounded();
+    seat::keyboard::map_keyboard(seat, None, move |event, _, _| {
+        if let Err(e) = tx.unbounded_send(event) {
+            if !e.is_disconnected() {
+                panic!("Unexpected send error {:?}", e)
+            }
+        }
+    })
+    .unwrap();
     rx
 }

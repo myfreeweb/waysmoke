@@ -1,6 +1,6 @@
 use iced_graphics::window::Compositor;
 pub use iced_native::Rectangle;
-use iced_native::{mouse, Cache, Damage, Point, Size, UserInterface};
+use iced_native::{keyboard, mouse, Cache, Damage, Point, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
 use std::{pin::Pin, time::Duration};
@@ -50,6 +50,7 @@ pub struct IcedInstance<T> {
 
     // wayland state
     ptr_active: bool,
+    kb_active: bool,
     scale: i32,
     leave_timeout: Option<future::Fuse<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>>,
     prev_input_region: Option<Vec<Rectangle<u32>>>,
@@ -58,6 +59,7 @@ pub struct IcedInstance<T> {
     themed_ptr: Option<pointer::ThemedPointer>,
     last_ptr_serial: Option<u32>,
     layer_events: mpsc::UnboundedReceiver<layer_surface::Event>,
+    keyboard_events: mpsc::UnboundedReceiver<seat::keyboard::Event>,
     ptr_events: mpsc::UnboundedReceiver<wl_pointer::Event>,
     touch_events: mpsc::UnboundedReceiver<wl_touch::Event>,
 
@@ -95,6 +97,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
         let seat = &parent.env.get_all_seats()[0];
         let layer_events = wayland_event_chan(&parent.layer_surface);
+        let keyboard_events = if with_seat_data(seat, |d| d.has_keyboard).unwrap() {
+            wayland_keyboard_chan(&seat)
+        } else {
+            futures::channel::mpsc::unbounded().1
+        };
         let (ptr_events, themed_ptr) = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
             (
                 wayland_event_chan(&seat.get_pointer()),
@@ -113,6 +120,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             parent,
             surface,
             ptr_active: false,
+            kb_active: false,
             scale: 1,
             leave_timeout: None,
             prev_input_region: None,
@@ -121,6 +129,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             themed_ptr,
             last_ptr_serial: None,
             layer_events,
+            keyboard_events,
             ptr_events,
             touch_events,
             cache: Cache::new(),
@@ -299,6 +308,51 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 
+    async fn on_keyboard_event(&mut self, event: seat::keyboard::Event) {
+        match event {
+            seat::keyboard::Event::Enter { surface, .. } => {
+                if self.parent.wl_surface.detach() != surface {
+                    return;
+                }
+                self.kb_active = true;
+            }
+            seat::keyboard::Event::Leave { surface, .. } => {
+                if self.parent.wl_surface.detach() != surface {
+                    return;
+                }
+                self.kb_active = true;
+            }
+            seat::keyboard::Event::Key {
+                keysym, state, utf8, ..
+            } => {
+                if !self.kb_active {
+                    return;
+                }
+                let modifiers = Default::default();
+                if let Some(key_code) = convert_key(keysym) {
+                    self.queue.push(iced_native::Event::Keyboard(match state {
+                        seat::keyboard::KeyState::Pressed => keyboard::Event::KeyPressed { key_code, modifiers },
+                        seat::keyboard::KeyState::Released => keyboard::Event::KeyReleased { key_code, modifiers },
+                        _ => panic!("new button state?"),
+                    }));
+                }
+                if state == seat::keyboard::KeyState::Released {
+                    self.render().await;
+                    return;
+                }
+                if let Some(ustr) = utf8 {
+                    // XXX: iced-winit filters out private use chars here
+                    for c in ustr.chars() {
+                        self.queue
+                            .push(iced_native::Event::Keyboard(keyboard::Event::CharacterReceived(c)));
+                    }
+                }
+                self.render().await;
+            }
+            _ => (),
+        }
+    }
+
     async fn on_pointer_event(&mut self, event: wl_pointer::Event) {
         match event {
             wl_pointer::Event::Enter { surface, serial, .. } => {
@@ -448,6 +502,7 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
         let mut leave_timeout = this.leave_timeout.as_mut().unwrap_or_else(|| &mut term);
         futures::select! {
             ev = this.layer_events.select_next_some() => if !this.on_layer_event(ev).await { return false },
+            ev = this.keyboard_events.select_next_some() => this.on_keyboard_event(ev).await,
             ev = this.ptr_events.select_next_some() => this.on_pointer_event(ev).await,
             ev = this.touch_events.select_next_some() => this.on_touch_event(ev).await,
             sc = this.parent.scale_rx.select_next_some() => this.on_scale(sc).await,
@@ -475,5 +530,109 @@ impl<T> Drop for IcedInstance<T> {
         if let Some(ref tptr) = self.themed_ptr {
             tptr.release();
         }
+    }
+}
+
+fn convert_key(keysym: u32) -> Option<keyboard::KeyCode> {
+    use seat::keyboard::keysyms as k;
+    match keysym {
+        k::XKB_KEY_0 => Some(keyboard::KeyCode::Key0),
+        k::XKB_KEY_1 => Some(keyboard::KeyCode::Key1),
+        k::XKB_KEY_2 => Some(keyboard::KeyCode::Key2),
+        k::XKB_KEY_3 => Some(keyboard::KeyCode::Key3),
+        k::XKB_KEY_4 => Some(keyboard::KeyCode::Key4),
+        k::XKB_KEY_5 => Some(keyboard::KeyCode::Key5),
+        k::XKB_KEY_6 => Some(keyboard::KeyCode::Key6),
+        k::XKB_KEY_7 => Some(keyboard::KeyCode::Key7),
+        k::XKB_KEY_8 => Some(keyboard::KeyCode::Key8),
+        k::XKB_KEY_9 => Some(keyboard::KeyCode::Key9),
+
+        k::XKB_KEY_A | k::XKB_KEY_a => Some(keyboard::KeyCode::A),
+        k::XKB_KEY_B | k::XKB_KEY_b => Some(keyboard::KeyCode::B),
+        k::XKB_KEY_C | k::XKB_KEY_c => Some(keyboard::KeyCode::C),
+        k::XKB_KEY_D | k::XKB_KEY_d => Some(keyboard::KeyCode::D),
+        k::XKB_KEY_E | k::XKB_KEY_e => Some(keyboard::KeyCode::E),
+        k::XKB_KEY_F | k::XKB_KEY_f => Some(keyboard::KeyCode::F),
+        k::XKB_KEY_G | k::XKB_KEY_g => Some(keyboard::KeyCode::G),
+        k::XKB_KEY_H | k::XKB_KEY_h => Some(keyboard::KeyCode::H),
+        k::XKB_KEY_I | k::XKB_KEY_i => Some(keyboard::KeyCode::I),
+        k::XKB_KEY_J | k::XKB_KEY_j => Some(keyboard::KeyCode::J),
+        k::XKB_KEY_K | k::XKB_KEY_k => Some(keyboard::KeyCode::K),
+        k::XKB_KEY_L | k::XKB_KEY_l => Some(keyboard::KeyCode::L),
+        k::XKB_KEY_M | k::XKB_KEY_m => Some(keyboard::KeyCode::M),
+        k::XKB_KEY_N | k::XKB_KEY_n => Some(keyboard::KeyCode::N),
+        k::XKB_KEY_O | k::XKB_KEY_o => Some(keyboard::KeyCode::O),
+        k::XKB_KEY_P | k::XKB_KEY_p => Some(keyboard::KeyCode::P),
+        k::XKB_KEY_Q | k::XKB_KEY_q => Some(keyboard::KeyCode::Q),
+        k::XKB_KEY_R | k::XKB_KEY_r => Some(keyboard::KeyCode::R),
+        k::XKB_KEY_S | k::XKB_KEY_s => Some(keyboard::KeyCode::S),
+        k::XKB_KEY_T | k::XKB_KEY_t => Some(keyboard::KeyCode::T),
+        k::XKB_KEY_U | k::XKB_KEY_u => Some(keyboard::KeyCode::U),
+        k::XKB_KEY_V | k::XKB_KEY_v => Some(keyboard::KeyCode::V),
+        k::XKB_KEY_W | k::XKB_KEY_w => Some(keyboard::KeyCode::W),
+        k::XKB_KEY_X | k::XKB_KEY_x => Some(keyboard::KeyCode::X),
+        k::XKB_KEY_Y | k::XKB_KEY_y => Some(keyboard::KeyCode::Y),
+        k::XKB_KEY_Z | k::XKB_KEY_z => Some(keyboard::KeyCode::Z),
+
+        k::XKB_KEY_F1 => Some(keyboard::KeyCode::F1),
+        k::XKB_KEY_F2 => Some(keyboard::KeyCode::F2),
+        k::XKB_KEY_F3 => Some(keyboard::KeyCode::F3),
+        k::XKB_KEY_F4 => Some(keyboard::KeyCode::F4),
+        k::XKB_KEY_F5 => Some(keyboard::KeyCode::F5),
+        k::XKB_KEY_F6 => Some(keyboard::KeyCode::F6),
+        k::XKB_KEY_F7 => Some(keyboard::KeyCode::F7),
+        k::XKB_KEY_F8 => Some(keyboard::KeyCode::F8),
+        k::XKB_KEY_F9 => Some(keyboard::KeyCode::F9),
+        k::XKB_KEY_F10 => Some(keyboard::KeyCode::F10),
+        k::XKB_KEY_F11 => Some(keyboard::KeyCode::F11),
+        k::XKB_KEY_F12 => Some(keyboard::KeyCode::F12),
+
+        k::XKB_KEY_space => Some(keyboard::KeyCode::Space),
+        k::XKB_KEY_slash => Some(keyboard::KeyCode::Slash),
+        k::XKB_KEY_backslash => Some(keyboard::KeyCode::Backslash),
+        k::XKB_KEY_period => Some(keyboard::KeyCode::Period),
+        k::XKB_KEY_comma => Some(keyboard::KeyCode::Comma),
+        k::XKB_KEY_colon => Some(keyboard::KeyCode::Colon),
+        k::XKB_KEY_semicolon => Some(keyboard::KeyCode::Semicolon),
+        k::XKB_KEY_underscore => Some(keyboard::KeyCode::Underline),
+        k::XKB_KEY_bracketleft => Some(keyboard::KeyCode::LBracket),
+        k::XKB_KEY_bracketright => Some(keyboard::KeyCode::RBracket),
+        k::XKB_KEY_apostrophe => Some(keyboard::KeyCode::Apostrophe),
+        k::XKB_KEY_at => Some(keyboard::KeyCode::At),
+        k::XKB_KEY_grave => Some(keyboard::KeyCode::Grave),
+        k::XKB_KEY_caret => Some(keyboard::KeyCode::Caret),
+        k::XKB_KEY_plus => Some(keyboard::KeyCode::Plus),
+        k::XKB_KEY_minus => Some(keyboard::KeyCode::Minus),
+        k::XKB_KEY_asterisk => Some(keyboard::KeyCode::Asterisk),
+        k::XKB_KEY_equal => Some(keyboard::KeyCode::Equals),
+
+        k::XKB_KEY_ISO_Left_Tab | k::XKB_KEY_Tab => Some(keyboard::KeyCode::Tab),
+        k::XKB_KEY_BackSpace => Some(keyboard::KeyCode::Backspace),
+        k::XKB_KEY_Return => Some(keyboard::KeyCode::Enter),
+        k::XKB_KEY_Escape => Some(keyboard::KeyCode::Escape),
+        k::XKB_KEY_Insert => Some(keyboard::KeyCode::Insert),
+        k::XKB_KEY_Home => Some(keyboard::KeyCode::Home),
+        k::XKB_KEY_Delete => Some(keyboard::KeyCode::Delete),
+        k::XKB_KEY_End => Some(keyboard::KeyCode::End),
+        k::XKB_KEY_Page_Down => Some(keyboard::KeyCode::PageDown),
+        k::XKB_KEY_Page_Up => Some(keyboard::KeyCode::PageUp),
+        k::XKB_KEY_Left => Some(keyboard::KeyCode::Left),
+        k::XKB_KEY_Up => Some(keyboard::KeyCode::Up),
+        k::XKB_KEY_Right => Some(keyboard::KeyCode::Right),
+        k::XKB_KEY_Down => Some(keyboard::KeyCode::Down),
+        k::XKB_KEY_XF86Copy => Some(keyboard::KeyCode::Copy),
+        k::XKB_KEY_XF86Cut => Some(keyboard::KeyCode::Cut),
+        k::XKB_KEY_XF86Paste => Some(keyboard::KeyCode::Paste),
+
+        k::XKB_KEY_Alt_L => Some(keyboard::KeyCode::LAlt),
+        k::XKB_KEY_Control_L => Some(keyboard::KeyCode::LControl),
+        k::XKB_KEY_Shift_L => Some(keyboard::KeyCode::LShift),
+        k::XKB_KEY_Super_L => Some(keyboard::KeyCode::LWin),
+        k::XKB_KEY_Alt_R => Some(keyboard::KeyCode::RAlt),
+        k::XKB_KEY_Control_R => Some(keyboard::KeyCode::RControl),
+        k::XKB_KEY_Shift_R => Some(keyboard::KeyCode::RShift),
+        k::XKB_KEY_Super_R => Some(keyboard::KeyCode::RWin),
+
+        _ => None,
     }
 }

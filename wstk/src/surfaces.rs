@@ -14,7 +14,7 @@ pub use smithay_client_toolkit::{
             zwlr_layer_shell_v1 as layer_shell, zwlr_layer_surface_v1 as layer_surface,
         },
     },
-    seat::{pointer, with_seat_data},
+    seat::{self, pointer, with_seat_data},
 };
 use std::rc::Rc;
 
