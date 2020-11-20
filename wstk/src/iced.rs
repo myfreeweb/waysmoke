@@ -44,7 +44,7 @@ pub trait IcedSurface {
     async fn on_touch_leave(&mut self) {}
 }
 
-pub struct IcedInstance<T> {
+pub struct IcedInstance<T: IcedSurface> {
     parent: DesktopInstance,
     surface: T,
 
@@ -73,6 +73,7 @@ pub struct IcedInstance<T> {
     swap_chain: Option<<WgpuCompositor as Compositor>::SwapChain>,
     prev_prim: iced_graphics::Primitive,
     queue: Vec<iced_native::Event>,
+    messages: Vec<T::Message>,
     last_mouse_interaction: mouse::Interaction,
 }
 
@@ -141,6 +142,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             swap_chain: None,
             prev_prim: iced_graphics::Primitive::None,
             queue: Vec::new(),
+            messages: Vec::new(),
             last_mouse_interaction: mouse::Interaction::Idle,
         }
     }
@@ -206,11 +208,12 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
         let mut user_interface =
             UserInterface::build(self.surface.view(), self.size, self.cache.clone(), &mut self.renderer);
-        let messages = user_interface.update(
+        user_interface.update(
             &self.queue.drain(..).collect::<Vec<_>>(),
             self.cursor_position,
             None,
             &mut self.renderer,
+            &mut self.messages,
         );
         let viewport = iced_graphics::Viewport::with_physical_size(
             iced_graphics::Size::new(
@@ -220,7 +223,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             self.scale as _,
         );
 
-        if messages.is_empty() {
+        if self.messages.is_empty() {
             let (primitive, mi) = user_interface.draw(&mut self.renderer, self.cursor_position);
             let dmg = self.prev_prim.damage(&primitive);
             self.prev_prim = primitive.clone();
@@ -243,7 +246,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             // iced-winit says we are forced to rebuild twice
             let temp_cache = user_interface.into_cache();
 
-            for message in messages {
+            for message in self.messages.drain(..) {
                 self.surface.update(message).await;
             }
             self.parent.flush();
@@ -525,7 +528,7 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
     }
 }
 
-impl<T> Drop for IcedInstance<T> {
+impl<T: IcedSurface> Drop for IcedInstance<T> {
     fn drop(&mut self) {
         if let Some(ref tptr) = self.themed_ptr {
             tptr.release();

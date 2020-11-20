@@ -54,7 +54,8 @@ where
         _messages: &mut Vec<Message>,
         _renderer: &iced_graphics::Renderer<Backend>,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
+        event::Status::Ignored
     }
 
     fn draw(

@@ -25,6 +25,7 @@ wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
 gio  = { git = "https://github.com/gtk-rs/gio" }
 gio-sys = { git = "https://github.com/gtk-rs/sys" }
 glib = { git = "https://github.com/gtk-rs/glib" }
+glib-macros = { git = "https://github.com/gtk-rs/glib" }
 glib-sys = { git = "https://github.com/gtk-rs/sys" }
 gobject-sys = { git = "https://github.com/gtk-rs/sys" }
 
@@ -34,6 +35,12 @@ smithay-client-toolkit = { git = "https://github.com/myfreeweb/client-toolkit", 
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
 wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
 wgpu-types = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
+
+# crates.io releases don't have gio/glib versions locked to minor 0 (matching git >_<)
+polkit-sys = { git = "https://github.com/DankBSD/polkit-rs", branch = "trunk" }
+polkit = { git = "https://github.com/DankBSD/polkit-rs", branch = "trunk" }
+polkit-agent-sys = { git = "https://github.com/DankBSD/polkit-rs", branch = "trunk" }
+polkit-agent = { git = "https://github.com/DankBSD/polkit-rs", branch = "trunk" }
 
 # polkit-sys = { path = "../polkit-rs/polkit-sys/" }
 # polkit = { path = "../polkit-rs/polkit/" }

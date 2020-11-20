@@ -70,7 +70,7 @@ where
         messages: &mut Vec<Message>,
         renderer: &Renderer,
         clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
         let bounds = layout.bounds();
         let is_mouse_over = bounds.contains(cursor_position);
         if is_mouse_over && !self.state.is_hovered {

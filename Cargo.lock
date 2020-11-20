@@ -159,9 +159,9 @@ checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "cc"
-version = "1.0.62"
+version = "1.0.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1770ced377336a88a67c473594ccc14eca6f4559217c34f64aac8f83d641b40"
+checksum = "95752358c8f7552394baf48cd82695b345628ad3f170d607de3ca03b8dacca15"
 dependencies = [
  "jobserver",
 ]
@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "cmake"
-version = "0.1.44"
+version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e56268c17a6248366d66d4a47a3381369d068cce8409bb1716ed77ea32163bb"
+checksum = "eb6210b637171dfba4cda12e579ac6dc73f5165ad56133e5d72ef3131f320855"
 dependencies = [
  "cc",
 ]
@@ -945,9 +945,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.10.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "668e725370f2b2243a5f43c6e4be6be3d501fb2441b81f7ee604ef766b5ab91b"
+checksum = "579160312273c954cc51bd440f059dde741029ac8daf8c84fece76cb77f62c15"
 dependencies = [
  "version_check",
 ]
@@ -1105,12 +1105,10 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.2.1"
-source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 
 [[package]]
 name = "iced_futures"
 version = "0.1.2"
-source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "futures",
  "log",
@@ -1120,7 +1118,6 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.1.0"
-source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -1134,7 +1131,6 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.2.2"
-source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1146,7 +1142,6 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.1.0"
-source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "iced_core",
 ]
@@ -1154,7 +1149,6 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.2.2"
-source = "git+https://github.com/myfreeweb/iced#00421ce03631cfe672d8310b9402588398470384"
 dependencies = [
  "bytemuck",
  "futures",
@@ -1173,9 +1167,9 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.23.11"
+version = "0.23.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4f0a8345b33b082aedec2f4d7d4a926b845cee184cbe78b703413066564431b"
+checksum = "7ce04077ead78e39ae8610ad26216aed811996b043d47beed5090db674f9e9b5"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -1213,9 +1207,9 @@ checksum = "dd01a2a73f2f399df96b22dc88ea687ef4d76226284e7531ae3c7ee1dc5cb534"
 
 [[package]]
 name = "instant"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb1fc4429a33e1f80d41dc9fea4d108a88bec1de8053878898ae448a0b52f613"
+checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -1320,9 +1314,9 @@ checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "lock_api"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28247cc5a5be2f05fbcd76dd0cf2c7d3b5400cb978a28042abcd4fa0b3f8261c"
+checksum = "dd96ffd135b2fd7b973ac026d28085defbe8983df057ced3eb4f2130b0831312"
 dependencies = [
  "scopeguard",
 ]
@@ -1570,14 +1564,14 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb477c7fd2a3a6e04e1dc6ca2e4e9b04f2df702021dc5a5d1cf078c587dc59f7"
 dependencies = [
- "ttf-parser 0.8.2",
+ "ttf-parser 0.8.3",
 ]
 
 [[package]]
 name = "parking_lot"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4893845fa2ca272e647da5d0e46660a314ead9c2fdd9a883aabc32e481a8733"
+checksum = "6d7744ac029df22dca6284efe4e898991d28e3085c706c972bcd7da4a27a15eb"
 dependencies = [
  "instant",
  "lock_api",
@@ -1630,18 +1624,18 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee41d838744f60d959d7074e3afb6b35c7456d0f61cad38a24e35e6553f73841"
+checksum = "9ccc2237c2c489783abd8c4c80e5450fc0e98644555b1364da68cc29aa151ca7"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a4ffa594b66bff340084d4081df649a7dc049ac8d7fc458d8e628bfbbb2f86"
+checksum = "f8e8d2bf0b23038a4424865103a4df472855692821aab4e4f5c3312d461d9e5f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1693,8 +1687,7 @@ dependencies = [
 [[package]]
 name = "polkit"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c20022fdd03db329431cb8d002ef1ec1e8d6976fdf25200a088ca9cb8ca4191"
+source = "git+https://github.com/DankBSD/polkit-rs?branch=trunk#ee512a3ca23ad31736cab6fa1948eb0d3c21e10e"
 dependencies = [
  "bitflags",
  "gio",
@@ -1708,8 +1701,7 @@ dependencies = [
 [[package]]
 name = "polkit-agent"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8903260cd6d16ab4be7ad835d014caa6faaf35b210e07c1088c59f19bbc9162"
+source = "git+https://github.com/DankBSD/polkit-rs?branch=trunk#ee512a3ca23ad31736cab6fa1948eb0d3c21e10e"
 dependencies = [
  "bitflags",
  "gio",
@@ -1726,8 +1718,7 @@ dependencies = [
 [[package]]
 name = "polkit-agent-sys"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afd46f3c3d49db45a4206b0a25df5ad7daec09d30f79480c7114d5209b408e22"
+source = "git+https://github.com/DankBSD/polkit-rs?branch=trunk#ee512a3ca23ad31736cab6fa1948eb0d3c21e10e"
 dependencies = [
  "gio-sys",
  "glib-sys",
@@ -1740,8 +1731,7 @@ dependencies = [
 [[package]]
 name = "polkit-sys"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba87456ccccf77d2d613e77ce1e0b242fe83411c8a49153f5ac91d9719c1a798"
+source = "git+https://github.com/DankBSD/polkit-rs?branch=trunk#ee512a3ca23ad31736cab6fa1948eb0d3c21e10e"
 dependencies = [
  "gio-sys",
  "glib-sys",
@@ -2098,9 +2088,9 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "smallvec"
-version = "1.4.2"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbee7696b84bbf3d89a1c2eccff0850e3047ed46bfcd2e92c29a2d074d57e252"
+checksum = "7acad6f34eb9e8a259d3283d1e8c1d34d7415943d4895f65cc73813c7396fc85"
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -2122,9 +2112,9 @@ dependencies = [
 
 [[package]]
 name = "spirv_cross"
-version = "0.22.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8221f4aebf53a4447aebd4fe29ebff2c66dd2c2821e63675e09e85bd21c8633"
+checksum = "ea964c42ce40326fe96111918abe71fa45076da1ea85769f3f1ab1cda9a1d496"
 dependencies = [
  "cc",
  "js-sys",
@@ -2352,9 +2342,9 @@ checksum = "3e5d7cd7ab3e47dda6e56542f4bbf3824c15234958c6e1bd6aaa347e93499fdc"
 
 [[package]]
 name = "ttf-parser"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d973cfa0e6124166b50a1105a67c85de40bbc625082f35c0f56f84cb1fb0a827"
+checksum = "7622061403fd00f0820df288e5a580e87d3ce15a1c4313c59fd1ffb77129903f"
 
 [[package]]
 name = "twox-hash"

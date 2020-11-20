@@ -21,14 +21,14 @@ futures = "0.3"
 glib = "=0.10.0"
 
 # patch: damage, image-debloat, GLib loop instead of conflicting local executor
-iced_core =     { git = "https://github.com/myfreeweb/iced" }
-iced_futures =  { git = "https://github.com/myfreeweb/iced" }
-iced_wgpu =     { git = "https://github.com/myfreeweb/iced", features = ["default_system_font", "svg", "png"] }
-iced_graphics = { git = "https://github.com/myfreeweb/iced" }
-iced_native =   { git = "https://github.com/myfreeweb/iced" }
+# iced_core =     { git = "https://github.com/myfreeweb/iced" }
+# iced_futures =  { git = "https://github.com/myfreeweb/iced" }
+# iced_wgpu =     { git = "https://github.com/myfreeweb/iced", features = ["default_system_font", "svg", "png"] }
+# iced_graphics = { git = "https://github.com/myfreeweb/iced" }
+# iced_native =   { git = "https://github.com/myfreeweb/iced" }
 
-# iced_core =     { path = "../../../hecrj/iced/core" }
-# iced_futures =  { path = "../../../hecrj/iced/futures" }
-# iced_wgpu =     { path = "../../../hecrj/iced/wgpu", features = ["default_system_font", "svg", "png"] }
-# iced_graphics = { path = "../../../hecrj/iced/graphics" }
-# iced_native =   { path = "../../../hecrj/iced/native" }
+iced_core =     { path = "../../../hecrj/iced/core" }
+iced_futures =  { path = "../../../hecrj/iced/futures" }
+iced_wgpu =     { path = "../../../hecrj/iced/wgpu", features = ["default_system_font", "svg", "png"] }
+iced_graphics = { path = "../../../hecrj/iced/graphics" }
+iced_native =   { path = "../../../hecrj/iced/native" }

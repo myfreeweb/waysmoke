@@ -67,7 +67,7 @@ where
         messages: &mut Vec<Message>,
         renderer: &Renderer,
         clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
         self.content.on_event(
             event,
             layout.children().next().unwrap(),
