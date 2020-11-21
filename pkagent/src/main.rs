@@ -270,7 +270,7 @@ impl AuthDialog {
     pub fn new(st: Rc<AuthRunState>) -> AuthDialog {
         AuthDialog {
             st,
-            input: Default::default(),
+            input: iced_native::text_input::State::focused(),
             input_val: "".to_string(),
             cancel_btn: Default::default(),
             submit_btn: Default::default(),
@@ -286,6 +286,7 @@ impl DesktopSurface for AuthDialog {
                 | layer_surface::Anchor::Right
                 | layer_surface::Anchor::Bottom,
         );
+        layer_surface.set_exclusive_zone(-1);
         layer_surface.set_keyboard_interactivity(1);
     }
 }
@@ -298,50 +299,70 @@ impl IcedSurface for AuthDialog {
         use iced_native::*;
 
         let title = Text::new(self.st.req.message.clone())
-            .size(16)
+            .size(20)
             .horizontal_alignment(HorizontalAlignment::Center);
 
-        let mut elems = Column::new().spacing(8).push(title);
+        let mut elems = Column::new().spacing(16).push(title);
 
         if let Some(info) = self.st.last_info.borrow().as_ref() {
             // TODO: style
-            elems = elems.push(Text::new(info.clone()).size(16));
+            elems = elems.push(Text::new(info.clone()).size(18));
         }
 
         if let Some(err) = self.st.last_error.borrow().as_ref() {
             // TODO: style
-            elems = elems.push(Text::new(err.clone()).size(16));
+            elems = elems.push(Text::new(err.clone()).size(18));
         }
 
         if let Some((prompt, echo)) = self.st.last_prompt.borrow().as_ref() {
             let mut input = TextInput::new(&mut self.input, "", &self.input_val, Msg::InputChange)
                 .on_submit(Msg::SubmitResponse)
-                .width(Length::Fill);
+                .width(Length::Fill)
+                .style(style::Dialog)
+                .padding(4);
             if !echo {
                 input = input.password();
             }
-            elems = elems.push(Row::new().push(Text::new(prompt.clone()).size(16)).push(input));
+            elems = elems.push(
+                Row::new()
+                    .align_items(Align::Center)
+                    .spacing(8)
+                    .push(Text::new(prompt.clone()).size(18))
+                    .push(input),
+            );
         }
 
         elems = elems.push(
             Row::new()
-                .spacing(8)
+                .spacing(16)
                 .push(
-                    Button::new(&mut self.cancel_btn, Text::new("Cancel").size(16))
-                        .on_press(Msg::CancelResponse)
-                        .width(Length::Fill),
+                    Button::new(
+                        &mut self.cancel_btn,
+                        Text::new("Cancel")
+                            .size(18)
+                            .horizontal_alignment(HorizontalAlignment::Center),
+                    )
+                    .on_press(Msg::CancelResponse)
+                    .width(Length::Fill)
+                    .style(style::Action(style::ActionType::Bad)),
                 )
                 .push(
-                    Button::new(&mut self.submit_btn, Text::new("OK").size(16))
-                        .on_press(Msg::SubmitResponse)
-                        .width(Length::Fill),
+                    Button::new(
+                        &mut self.submit_btn,
+                        Text::new("OK")
+                            .size(18)
+                            .horizontal_alignment(HorizontalAlignment::Center),
+                    )
+                    .on_press(Msg::SubmitResponse)
+                    .width(Length::Fill)
+                    .style(style::Action(style::ActionType::Good)),
                 ),
         );
 
         let dialog = Container::new(elems)
             .style(style::Dialog)
             .width(Length::Units(420))
-            .padding(8);
+            .padding(16);
 
         Container::new(Column::new().push(dialog))
             .style(style::DarkBar)
