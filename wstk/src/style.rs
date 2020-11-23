@@ -26,7 +26,7 @@ impl container::StyleSheet for Dock {
         container::Style {
             background: Some(Background::Color(self.0)),
             text_color: Some(Color::WHITE),
-            border_radius: 3,
+            border_radius: 3.0,
             ..container::Style::default()
         }
     }
@@ -47,7 +47,7 @@ impl button::StyleSheet for Toplevel {
     fn active(&self) -> button::Style {
         button::Style {
             background: Some(Background::Color(DARK_COLOR)),
-            border_radius: 3,
+            border_radius: 3.0,
             text_color: Color::WHITE,
             ..button::Style::default()
         }
@@ -62,7 +62,7 @@ impl button::StyleSheet for Toplevel {
 
     fn pressed(&self) -> button::Style {
         button::Style {
-            border_width: 1,
+            border_width: 1.0,
             border_color: Color::WHITE,
             ..self.hovered()
         }
@@ -75,9 +75,9 @@ impl container::StyleSheet for Dialog {
     fn style(&self) -> container::Style {
         container::Style {
             background: Some(Background::Color(DARK_COLOR)),
-            border_width: 1,
+            border_width: 1.0,
             border_color: BRIGHT_COLOR,
-            border_radius: 3,
+            border_radius: 3.0,
             text_color: Some(VERY_BRIGHT_COLOR),
             ..container::Style::default()
         }
@@ -88,8 +88,8 @@ impl text_input::StyleSheet for Dialog {
     fn active(&self) -> text_input::Style {
         text_input::Style {
             background: Background::Color(Color::from_rgba8(100, 100, 100, 0.45)),
-            border_radius: 3,
-            border_width: 1,
+            border_radius: 3.0,
+            border_width: 1.0,
             border_color: Color::from_rgba8(255, 255, 255, 0.45),
         }
     }
@@ -137,8 +137,8 @@ impl button::StyleSheet for Action {
                 ActionType::Bad => Color::from_rgba8(155, 55, 55, 0.85),
                 ActionType::Good => Color::from_rgba8(55, 155, 55, 0.85),
             })),
-            border_radius: 3,
-            border_width: 1,
+            border_radius: 69.0,
+            border_width: 1.0,
             border_color: match &self.0 {
                 ActionType::Bad => Color::from_rgba8(205, 105, 105, 0.85),
                 ActionType::Good => Color::from_rgba8(105, 205, 105, 0.85),
@@ -154,7 +154,7 @@ impl button::StyleSheet for Action {
                 ActionType::Bad => Color::from_rgba8(255, 155, 155, 0.85),
                 ActionType::Good => Color::from_rgba8(155, 255, 155, 0.85),
             })),
-            border_width: 0,
+            border_width: 0.0,
             text_color: DARK_COLOR,
             ..self.active()
         }
@@ -163,7 +163,7 @@ impl button::StyleSheet for Action {
     fn pressed(&self) -> button::Style {
         button::Style {
             border_color: BRIGHT_COLOR,
-            border_width: 1,
+            border_width: 1.0,
             ..self.hovered()
         }
     }

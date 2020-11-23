@@ -277,8 +277,8 @@ impl IcedSurface for Dock {
             prim::Prim::new(iced_graphics::Primitive::Quad {
                 bounds: iced_graphics::Rectangle::with_size(Size::new(192.0, 4.0)),
                 background: Background::Color(Color::WHITE),
-                border_radius: 2,
-                border_width: 0,
+                border_radius: 2.0,
+                border_width: 0.0,
                 border_color: Color::WHITE,
             })
             .width(Length::Units(192))

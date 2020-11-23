@@ -1105,10 +1105,12 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.2.1"
+source = "git+https://github.com/myfreeweb/iced#2d63335c4f98f249f5ff5711b02fae49f45e7b3d"
 
 [[package]]
 name = "iced_futures"
 version = "0.1.2"
+source = "git+https://github.com/myfreeweb/iced#2d63335c4f98f249f5ff5711b02fae49f45e7b3d"
 dependencies = [
  "futures",
  "log",
@@ -1118,6 +1120,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.1.0"
+source = "git+https://github.com/myfreeweb/iced#2d63335c4f98f249f5ff5711b02fae49f45e7b3d"
 dependencies = [
  "bytemuck",
  "font-kit",
@@ -1131,6 +1134,7 @@ dependencies = [
 [[package]]
 name = "iced_native"
 version = "0.2.2"
+source = "git+https://github.com/myfreeweb/iced#2d63335c4f98f249f5ff5711b02fae49f45e7b3d"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1142,6 +1146,7 @@ dependencies = [
 [[package]]
 name = "iced_style"
 version = "0.1.0"
+source = "git+https://github.com/myfreeweb/iced#2d63335c4f98f249f5ff5711b02fae49f45e7b3d"
 dependencies = [
  "iced_core",
 ]
@@ -1149,6 +1154,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.2.2"
+source = "git+https://github.com/myfreeweb/iced#2d63335c4f98f249f5ff5711b02fae49f45e7b3d"
 dependencies = [
  "bytemuck",
  "futures",
