@@ -32,6 +32,9 @@ gobject-sys = { git = "https://github.com/gtk-rs/sys" }
 # patch: avoid lifetime https://github.com/Smithay/client-toolkit/pull/163
 smithay-client-toolkit = { git = "https://github.com/myfreeweb/client-toolkit", branch = "smallvec" }
 
+# patch: don't panic on recall send error
+wgpu = { git = "https://github.com/myfreeweb/wgpu-rs", branch = "v0.6-dont-panic" }
+
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
 wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
 wgpu-types = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
