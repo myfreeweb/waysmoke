@@ -10,6 +10,12 @@ use wstk::*;
 
 static OBJ_PATH: &str = "/technology/unrelenting/waysmoke/Agent";
 
+enum DialogElement {
+    Info(String),
+    Error(String),
+    Prompt { txt: String, echo_on: bool, done: bool },
+}
+
 struct AuthRequest {
     action_id: String,
     message: String,
@@ -23,9 +29,7 @@ struct AuthRunState {
     req: AuthRequest,
     session: polkit_agent::Session,
     notifier: event_listener::Event,
-    last_info: RefCell<Option<String>>,
-    last_error: RefCell<Option<String>>,
-    last_prompt: RefCell<Option<(String, bool)>>,
+    elements: RefCell<Vec<DialogElement>>,
     done: Cell<bool>,
 }
 
@@ -105,27 +109,29 @@ impl<'a> Runnable for AuthAgent<'a> {
                     session,
                     notifier: event_listener::Event::new(),
 
-                    last_info: RefCell::new(None),
-                    last_error: RefCell::new(None),
-                    last_prompt: RefCell::new(None),
+                    elements: RefCell::new(Vec::new()),
                     done: Cell::new(false),
                 });
                 state
                     .session
                     .connect_request(clone!(@strong state => move |_s, prompt, echo_on| {
-                        state.last_prompt.replace(Some((prompt.to_string(), echo_on)));
+                        state.elements.borrow_mut().push(DialogElement::Prompt {
+                            txt: prompt.to_string(),
+                            echo_on,
+                            done: false,
+                        });
                         state.notifier.notify(usize::MAX);
                     }));
                 state
                     .session
                     .connect_show_error(clone!(@strong state => move |_s, err| {
-                        state.last_error.replace(Some(err.to_string()));
+                        state.elements.borrow_mut().push(DialogElement::Error(err.to_string()));
                         state.notifier.notify(usize::MAX);
                     }));
                 state
                     .session
                     .connect_show_info(clone!(@strong state => move |_s, info| {
-                        state.last_info.replace(Some(info.to_string()));
+                        state.elements.borrow_mut().push(DialogElement::Info(info.to_string()));
                         state.notifier.notify(usize::MAX);
                     }));
                 state
@@ -304,32 +310,41 @@ impl IcedSurface for AuthDialog {
 
         let mut elems = Column::new().spacing(16).push(title);
 
-        if let Some(info) = self.st.last_info.borrow().as_ref() {
-            // TODO: style
-            elems = elems.push(Text::new(info.clone()).size(18));
-        }
+        // We're only supposed to have one not-done prompt, but Rust doesn't know.
+        // Enforce this by borrowing outside of the loop here.
+        let mut input_stref = Some(&mut self.input);
 
-        if let Some(err) = self.st.last_error.borrow().as_ref() {
-            // TODO: style
-            elems = elems.push(Text::new(err.clone()).size(18));
-        }
-
-        if let Some((prompt, echo)) = self.st.last_prompt.borrow().as_ref() {
-            let mut input = TextInput::new(&mut self.input, "", &self.input_val, Msg::InputChange)
-                .on_submit(Msg::SubmitResponse)
-                .width(Length::Fill)
-                .style(style::Dialog)
-                .padding(4);
-            if !echo {
-                input = input.password();
+        for e in self.st.elements.borrow().iter() {
+            match e {
+                DialogElement::Info(txt) => {
+                    // TODO: style
+                    elems = elems.push(Text::new(txt.clone()).size(18));
+                }
+                DialogElement::Error(txt) => {
+                    // TODO: style
+                    elems = elems.push(Text::new(txt.clone()).size(18));
+                }
+                DialogElement::Prompt { txt, echo_on, done } => {
+                    let mut row = Row::new()
+                        .align_items(Align::Center)
+                        .spacing(8)
+                        .push(Text::new(txt.clone()).size(18));
+                    if !done {
+                        if let Some(input) = input_stref.take() {
+                            let mut input = TextInput::new(input, "", &self.input_val, Msg::InputChange)
+                                .on_submit(Msg::SubmitResponse)
+                                .width(Length::Fill)
+                                .style(style::Dialog)
+                                .padding(4);
+                            if !echo_on {
+                                input = input.password();
+                            }
+                            row = row.push(input);
+                        }
+                    }
+                    elems = elems.push(row);
+                }
             }
-            elems = elems.push(
-                Row::new()
-                    .align_items(Align::Center)
-                    .spacing(8)
-                    .push(Text::new(prompt.clone()).size(18))
-                    .push(input),
-            );
         }
 
         elems = elems.push(
@@ -380,7 +395,17 @@ impl IcedSurface for AuthDialog {
     async fn update(&mut self, message: Self::Message) {
         match message {
             Msg::InputChange(new_input) => self.input_val = new_input,
-            Msg::SubmitResponse => self.st.session.response(&self.input_val),
+            Msg::SubmitResponse => {
+                let sent_val = self.input_val.clone();
+                self.input_val.clear();
+                for e in self.st.elements.borrow_mut().iter_mut().rev() {
+                    if let DialogElement::Prompt { ref mut done, .. } = e {
+                        *done = true;
+                        break;
+                    }
+                }
+                self.st.session.response(&sent_val);
+            }
             Msg::CancelResponse => self.st.session.cancel(),
         }
     }
