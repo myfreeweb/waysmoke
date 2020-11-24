@@ -281,6 +281,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             self.size.height as u32 * self.scale as u32,
         ));
         self.parent.wl_surface.set_buffer_scale(self.scale);
+        self.prev_prim = iced_graphics::Primitive::None; // force damage
     }
 
     async fn on_scale(&mut self, scale: i32) {
