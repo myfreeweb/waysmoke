@@ -2106,7 +2106,7 @@ checksum = "7acad6f34eb9e8a259d3283d1e8c1d34d7415943d4895f65cc73813c7396fc85"
 [[package]]
 name = "smithay-client-toolkit"
 version = "0.12.0"
-source = "git+https://github.com/myfreeweb/client-toolkit?branch=smallvec#0863715890f7d4d88b093fc2c4df138402cfcecf"
+source = "git+https://github.com/myfreeweb/client-toolkit?branch=master#f23c126fb48ed97ec3f1f3374b00b009e26d5b33"
 dependencies = [
  "bitflags",
  "byteorder",

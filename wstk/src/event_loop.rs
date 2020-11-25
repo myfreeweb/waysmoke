@@ -1,6 +1,9 @@
 use futures::channel::{mpsc, oneshot};
 use smithay_client_toolkit::{
-    reexports::client::{protocol::wl_seat, Attached, EventQueue, Interface, Main, MessageGroup, Proxy, ProxyMap},
+    reexports::client::{
+        protocol::{wl_keyboard, wl_seat},
+        Attached, EventQueue, Interface, Main, MessageGroup, Proxy, ProxyMap,
+    },
     seat,
 };
 
@@ -64,15 +67,22 @@ where
 }
 
 /// Creates a mpsc channel for a Wayland object's events.
-pub fn wayland_keyboard_chan(seat: &Attached<wl_seat::WlSeat>) -> mpsc::UnboundedReceiver<seat::keyboard::Event> {
+pub fn wayland_keyboard_chan(
+    seat: &Attached<wl_seat::WlSeat>,
+) -> (
+    Main<wl_keyboard::WlKeyboard>,
+    mpsc::UnboundedReceiver<seat::keyboard::Event>,
+) {
     let (tx, rx) = mpsc::unbounded();
-    seat::keyboard::map_keyboard(seat, None, move |event, _, _| {
-        if let Err(e) = tx.unbounded_send(event) {
-            if !e.is_disconnected() {
-                panic!("Unexpected send error {:?}", e)
+    (
+        seat::keyboard::map_keyboard(seat, None, move |event, _, _| {
+            if let Err(e) = tx.unbounded_send(event) {
+                if !e.is_disconnected() {
+                    panic!("Unexpected send error {:?}", e)
+                }
             }
-        }
-    })
-    .unwrap();
-    rx
+        })
+        .unwrap(),
+        rx,
+    )
 }

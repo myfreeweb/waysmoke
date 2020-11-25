@@ -58,6 +58,7 @@ pub struct IcedInstance<T: IcedSurface> {
     touch_leave: bool,
     themed_ptr: Option<pointer::ThemedPointer>,
     last_ptr_serial: Option<u32>,
+    keyboard_handle: Option<Main<wl_keyboard::WlKeyboard>>,
     layer_events: mpsc::UnboundedReceiver<layer_surface::Event>,
     keyboard_events: mpsc::UnboundedReceiver<seat::keyboard::Event>,
     ptr_events: mpsc::UnboundedReceiver<wl_pointer::Event>,
@@ -98,10 +99,11 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
         let seat = &parent.env.get_all_seats()[0];
         let layer_events = wayland_event_chan(&parent.layer_surface);
-        let keyboard_events = if with_seat_data(seat, |d| d.has_keyboard).unwrap() {
-            wayland_keyboard_chan(&seat)
+        let (keyboard_events, keyboard_handle) = if with_seat_data(seat, |d| d.has_keyboard).unwrap() {
+            let (hdl, evs) = wayland_keyboard_chan(&seat);
+            (evs, Some(hdl))
         } else {
-            futures::channel::mpsc::unbounded().1
+            (futures::channel::mpsc::unbounded().1, None)
         };
         let (ptr_events, themed_ptr) = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
             (
@@ -129,6 +131,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             touch_leave: false,
             themed_ptr,
             last_ptr_serial: None,
+            keyboard_handle,
             layer_events,
             keyboard_events,
             ptr_events,
@@ -531,8 +534,12 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
 
 impl<T: IcedSurface> Drop for IcedInstance<T> {
     fn drop(&mut self) {
-        if let Some(ref tptr) = self.themed_ptr {
+        if let Some(tptr) = self.themed_ptr.take() {
             tptr.release();
+        }
+        if let Some(kb) = self.keyboard_handle.take() {
+            kb.quick_assign(|_, _, _| ());
+            kb.release();
         }
     }
 }
