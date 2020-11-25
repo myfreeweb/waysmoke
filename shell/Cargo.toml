@@ -1,6 +1,7 @@
 [package]
 name = "waysmoke-shell"
 version = "2020.5.0"
+license = "Unlicense"
 authors = ["Greg V <greg@unrelenting.technology>"]
 edition = "2018"
 

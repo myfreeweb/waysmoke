@@ -1,0 +1,36 @@
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "warn"
+notice = "warn"
+ignore = []
+
+[licenses]
+unlicensed = "deny"
+allow = [
+	"MPL-2.0",
+]
+deny = []
+copyleft = "deny"
+allow-osi-fsf-free = "either"
+default = "deny"
+confidence-threshold = 0.8
+exceptions = []
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+allow = []
+deny = []
+skip = [
+	{ name = "cfg-if" },
+]
+skip-tree = []
+
+[sources]
+unknown-registry = "warn"
+unknown-git = "allow"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

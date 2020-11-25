@@ -1,6 +1,7 @@
 [package]
 name = "wstk"
 version = "0.0.0"
+license = "Unlicense"
 authors = ["Greg V <greg@unrelenting.technology>"]
 edition = "2018"
 
