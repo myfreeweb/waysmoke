@@ -1,4 +1,9 @@
-use futures::channel::{mpsc, oneshot};
+use futures::{
+    channel::{mpsc, oneshot},
+    future::FusedFuture,
+    prelude::*,
+    task,
+};
 use smithay_client_toolkit::{
     reexports::client::{
         protocol::{wl_keyboard, wl_seat},
@@ -6,6 +11,7 @@ use smithay_client_toolkit::{
     },
     seat,
 };
+use std::{marker::Unpin, pin::Pin};
 
 /// Enables Wayland event dispatch on the glib event loop. Requires 'static :(
 pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
@@ -30,21 +36,96 @@ pub fn glib_add_wayland(event_queue: &'static mut EventQueue) {
     });
 }
 
-/// Creates a mpsc channel for a Wayland object's events.
-pub fn wayland_event_chan<I>(obj: &Main<I>) -> mpsc::UnboundedReceiver<I::Event>
+/// Wayland proxy wrapper that provides an async channel for the object's events,
+/// and can run the object's destructor on Drop.
+pub struct AsyncMain<I>
 where
     I: Interface + AsRef<Proxy<I>> + From<Proxy<I>> + Sync,
     I::Event: MessageGroup<Map = ProxyMap>,
 {
-    let (tx, rx) = mpsc::unbounded();
-    obj.quick_assign(move |_, event, _| {
-        if let Err(e) = tx.unbounded_send(event) {
-            if !e.is_disconnected() {
-                panic!("Unexpected send error {:?}", e)
-            }
+    main: Main<I>,
+    rx: mpsc::UnboundedReceiver<I::Event>,
+    destructor: Option<fn(&Main<I>) -> ()>,
+}
+
+impl<I> Drop for AsyncMain<I>
+where
+    I: Interface + AsRef<Proxy<I>> + From<Proxy<I>> + Sync,
+    I::Event: MessageGroup<Map = ProxyMap>,
+{
+    fn drop(&mut self) {
+        // XXX: https://github.com/Smithay/wayland-rs/issues/358
+        self.main.quick_assign(|_, _, _| ());
+        if let Some(d) = self.destructor.take() {
+            d(&self.main);
         }
-    });
-    rx
+    }
+}
+
+impl<I> std::ops::Deref for AsyncMain<I>
+where
+    I: Interface + AsRef<Proxy<I>> + Into<Proxy<I>> + From<Proxy<I>> + Sync,
+    I::Event: MessageGroup<Map = ProxyMap>,
+{
+    type Target = Attached<I>;
+
+    fn deref(&self) -> &Self::Target {
+        self.main.deref()
+    }
+}
+
+impl<I> AsyncMain<I>
+where
+    I: Interface + AsRef<Proxy<I>> + From<Proxy<I>> + Sync,
+    I::Event: MessageGroup<Map = ProxyMap>,
+{
+    pub fn new(main: Main<I>, destructor: Option<fn(&Main<I>) -> ()>) -> AsyncMain<I> {
+        let (tx, rx) = mpsc::unbounded();
+        main.quick_assign(move |_, event, _| {
+            if let Err(e) = tx.unbounded_send(event) {
+                if !e.is_disconnected() {
+                    panic!("Unexpected send error {:?}", e)
+                }
+            }
+        });
+        AsyncMain { main, rx, destructor }
+    }
+
+    pub fn next(&mut self) -> impl FusedFuture<Output = I::Event> + '_ {
+        self.rx.select_next_some()
+    }
+}
+
+/// Wrapper for using a maybe-nonexistent future in a select! invocation
+pub struct MaybeFuture<F>(Option<F>);
+
+impl<F> MaybeFuture<F> {
+    pub fn new(f: Option<F>) -> MaybeFuture<F> {
+        MaybeFuture(f)
+    }
+}
+
+impl<F: Future + Unpin> Future for MaybeFuture<F> {
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> task::Poll<Self::Output> {
+        // XXX: unchecked should be fine here, is it faster than Unpin?
+        if let Some(ref mut f) = self.get_mut().0 {
+            Future::poll(Pin::new(f), cx)
+        } else {
+            task::Poll::Pending
+        }
+    }
+}
+
+impl<F: FusedFuture + Unpin> FusedFuture for MaybeFuture<F> {
+    fn is_terminated(&self) -> bool {
+        if let Some(ref f) = self.0 {
+            f.is_terminated()
+        } else {
+            true
+        }
+    }
 }
 
 /// Creates a oneshot channel for a Wayland object's events, intended for WlCallback.

@@ -23,7 +23,7 @@ use std::rc::Rc;
 use futures::channel::mpsc;
 pub use futures::prelude::*;
 
-use crate::{handle::*, toplevels::*};
+use crate::{event_loop::AsyncMain, handle::*, toplevels::*};
 
 default_environment!(Env,
     fields = [
@@ -58,7 +58,7 @@ pub struct DesktopInstance {
     pub display: Display,
     pub theme_mgr: pointer::ThemeManager,
     pub wl_surface: Attached<wl_surface::WlSurface>,
-    pub layer_surface: Main<layer_surface::ZwlrLayerSurfaceV1>,
+    pub layer_surface: AsyncMain<layer_surface::ZwlrLayerSurfaceV1>,
     pub scale_rx: mpsc::UnboundedReceiver<i32>,
 }
 
@@ -104,7 +104,7 @@ impl DesktopInstance {
             display,
             theme_mgr,
             wl_surface,
-            layer_surface,
+            layer_surface: AsyncMain::new(layer_surface, Some(|s| s.destroy())),
             scale_rx,
         }
     }
@@ -140,7 +140,6 @@ impl Drop for DesktopInstance {
                 eprintln!("WTF: no scale channel for dropped surface");
             }
         }
-        self.layer_surface.destroy();
         self.wl_surface.destroy();
     }
 }

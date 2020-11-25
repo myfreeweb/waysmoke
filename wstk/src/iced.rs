@@ -6,7 +6,7 @@ use iced_wgpu::window::Compositor as WgpuCompositor;
 use std::{pin::Pin, time::Duration};
 
 pub use async_trait::async_trait;
-pub use futures::{channel::mpsc, prelude::*};
+pub use futures::{channel::mpsc, future, prelude::*};
 
 use crate::{event_loop::*, run::*, surfaces::*};
 
@@ -59,10 +59,9 @@ pub struct IcedInstance<T: IcedSurface> {
     themed_ptr: Option<pointer::ThemedPointer>,
     last_ptr_serial: Option<u32>,
     keyboard_handle: Option<Main<wl_keyboard::WlKeyboard>>,
-    layer_events: mpsc::UnboundedReceiver<layer_surface::Event>,
     keyboard_events: mpsc::UnboundedReceiver<seat::keyboard::Event>,
-    ptr_events: mpsc::UnboundedReceiver<wl_pointer::Event>,
-    touch_events: mpsc::UnboundedReceiver<wl_touch::Event>,
+    ptr: Option<AsyncMain<wl_pointer::WlPointer>>,
+    touch: Option<AsyncMain<wl_touch::WlTouch>>,
 
     // iced render state
     cache: Cache,
@@ -98,25 +97,24 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         parent.flush();
 
         let seat = &parent.env.get_all_seats()[0];
-        let layer_events = wayland_event_chan(&parent.layer_surface);
         let (keyboard_events, keyboard_handle) = if with_seat_data(seat, |d| d.has_keyboard).unwrap() {
             let (hdl, evs) = wayland_keyboard_chan(&seat);
             (evs, Some(hdl))
         } else {
             (futures::channel::mpsc::unbounded().1, None)
         };
-        let (ptr_events, themed_ptr) = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
+        let (ptr, themed_ptr) = if with_seat_data(seat, |d| d.has_pointer).unwrap() {
             (
-                wayland_event_chan(&seat.get_pointer()),
+                Some(AsyncMain::new(seat.get_pointer(), Some(|p| p.release()))),
                 Some(parent.theme_mgr.theme_pointer(seat.get_pointer().detach())),
             )
         } else {
-            (futures::channel::mpsc::unbounded().1, None)
+            (None, None)
         };
-        let touch_events = if with_seat_data(seat, |d| d.has_touch).unwrap() {
-            wayland_event_chan(&seat.get_touch())
+        let touch = if with_seat_data(seat, |d| d.has_touch).unwrap() {
+            Some(AsyncMain::new(seat.get_touch(), Some(|p| p.release())))
         } else {
-            futures::channel::mpsc::unbounded().1
+            None
         };
 
         IcedInstance {
@@ -132,10 +130,9 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             themed_ptr,
             last_ptr_serial: None,
             keyboard_handle,
-            layer_events,
             keyboard_events,
-            ptr_events,
-            touch_events,
+            ptr,
+            touch,
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             cursor_position: Point::default(),
@@ -508,10 +505,10 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
         let mut term = future::Fuse::terminated();
         let mut leave_timeout = this.leave_timeout.as_mut().unwrap_or_else(|| &mut term);
         futures::select! {
-            ev = this.layer_events.select_next_some() => if !this.on_layer_event(ev).await { return false },
+            ev = this.parent.layer_surface.next() => if !this.on_layer_event(ev).await { return false },
             ev = this.keyboard_events.select_next_some() => this.on_keyboard_event(ev).await,
-            ev = this.ptr_events.select_next_some() => this.on_pointer_event(ev).await,
-            ev = this.touch_events.select_next_some() => this.on_touch_event(ev).await,
+            ev = MaybeFuture::new(this.ptr.as_mut().map(|p| p.next())) => this.on_pointer_event(ev).await,
+            ev = MaybeFuture::new(this.touch.as_mut().map(|p| p.next())) => this.on_touch_event(ev).await,
             sc = this.parent.scale_rx.select_next_some() => this.on_scale(sc).await,
             ac = this.surface.run().fuse() => match ac {
                 Action::DoNothing => (),
