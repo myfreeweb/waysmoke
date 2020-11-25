@@ -130,6 +130,14 @@ impl DesktopInstance {
 
 impl Drop for DesktopInstance {
     fn drop(&mut self) {
+        unsafe {
+            let wlsurf = self.wl_surface.detach();
+            if let Some(i) = SCALE_CHANNELS.iter().position(|(surf, _)| *surf == wlsurf) {
+                SCALE_CHANNELS.remove(i);
+            } else {
+                eprintln!("WTF: no scale channel for dropped surface");
+            }
+        }
         self.layer_surface.destroy();
         self.wl_surface.destroy();
     }
