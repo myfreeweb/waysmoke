@@ -30,11 +30,11 @@ glib-sys = { git = "https://github.com/gtk-rs/sys" }
 gobject-sys = { git = "https://github.com/gtk-rs/sys" }
 
 # patch: avoid lifetime https://github.com/Smithay/client-toolkit/pull/163 + keyboard Main
-smithay-client-toolkit = { git = "https://github.com/myfreeweb/client-toolkit", branch = "master" }
+smithay-client-toolkit = { git = "https://github.com/unrelentingtech/client-toolkit", branch = "master" }
 
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
-wgpu-core  = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
-wgpu-types = { git = "https://github.com/myfreeweb/wgpu", branch = "v0.6-alpha" }
+wgpu-core  = { git = "https://github.com/unrelentingtech/wgpu", branch = "v0.7-alpha" }
+wgpu-types = { git = "https://github.com/unrelentingtech/wgpu", branch = "v0.7-alpha" }
 
 # crates.io releases don't have gio/glib versions locked to minor 0 (matching git >_<)
 polkit-sys = { git = "https://github.com/DankBSD/polkit-rs", branch = "trunk" }

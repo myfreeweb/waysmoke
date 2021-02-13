@@ -405,8 +405,10 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 }
                 self.cursor_position = Point::new(surface_x as _, surface_y as _);
                 self.queue.push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                    x: surface_x as _,
-                    y: surface_y as _,
+                    position: Point {
+                        x: surface_x as _,
+                        y: surface_y as _,
+                    },
                 }));
                 self.last_ptr_serial = None;
             }
@@ -456,8 +458,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.leave_timeout = None;
                 self.cursor_position = Point::new(x as _, y as _);
                 self.queue.push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                    x: x as _,
-                    y: y as _,
+                    position: Point { x: x as _, y: y as _ },
                 }));
                 self.surface.on_touch_enter().await;
             }
@@ -467,8 +468,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 }
                 self.cursor_position = Point::new(x as _, y as _);
                 self.queue.push(iced_native::Event::Mouse(mouse::Event::CursorMoved {
-                    x: x as _,
-                    y: y as _,
+                    position: Point { x: x as _, y: y as _ },
                 }));
             }
             wl_touch::Event::Up { id, .. } => {
