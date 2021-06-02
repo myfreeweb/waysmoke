@@ -178,6 +178,13 @@ impl Dock {
             .chain(std::iter::once(&self.power as &dyn Docklet))
     }
 
+    fn docklets_mut(&mut self) -> impl Iterator<Item = &mut dyn Docklet> {
+        self.apps
+            .iter_mut()
+            .map(|x| &mut *x as &mut dyn Docklet)
+            .chain(std::iter::once(&mut self.power as &mut dyn Docklet))
+    }
+
     fn width(&self) -> u16 {
         let (wid, cnt) = self.docklets().fold((0, 0), |(w, c), d| (w + d.width(), c + 1));
         wid + DOCK_PADDING * (std::cmp::max(cnt as u16, 1) - 1) + DOCK_PADDING * 2
@@ -342,16 +349,9 @@ impl IcedSurface for Dock {
     async fn run(&mut self) -> Action {
         // ARGH: avoiding multiple mutable borrows is so hard in a situation like this!
         //       even sel's Drop (!) mutably borrows self.apps, hence the clone/drop dance.
-        //       also the 'docklets_mut' has to be inline - if it was a method, rustc couldn't
-        //       see inside of it and find that it only touches self.apps and not the rest of self
         let sel = future::select(
             self.services.toplevels.subscribe(),
-            future::select_all(
-                self.apps
-                    .iter_mut()
-                    .map(|x| x.run())
-                    .chain(std::iter::once(self.power.run())),
-            ),
+            future::select_all(self.docklets_mut().map(|x| x.run())),
         )
         .await;
         if let future::Either::Left(((), _)) = sel {
