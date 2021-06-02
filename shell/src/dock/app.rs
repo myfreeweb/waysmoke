@@ -78,7 +78,11 @@ impl Docklet for AppDocklet {
 
         let mut content = Row::new().push(big_button);
 
-        while self.media_buttons.len() < our_medias(&self.services.media.state(), &self.app.id).count() {
+        let num_medias = our_medias(&self.services.media.state(), &self.app.id).count();
+        while self.media_buttons.len() > num_medias {
+            self.media_buttons.pop();
+        }
+        while self.media_buttons.len() < num_medias {
             self.media_buttons.push(Default::default());
         }
         for (i, ((_, media_data), btns)) in our_medias(&self.services.media.state(), &self.app.id)
