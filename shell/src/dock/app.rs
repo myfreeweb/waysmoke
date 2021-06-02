@@ -1,5 +1,5 @@
-use gio::prelude::AppInfoExt;
 use crate::{dock::*, style};
+use gio::prelude::AppInfoExt;
 use std::cell::Ref;
 
 lazy_static::lazy_static! {
@@ -151,15 +151,10 @@ impl Docklet for AppDocklet {
                     .on_press(DockletMsg::App(Msg::ActivateToplevel(i))),
             )
         }
-        let title = Text::new(
-            self.app
-                .info
-                .name()
-                .to_string(),
-        )
-        .width(Length::Fill)
-        .horizontal_alignment(HorizontalAlignment::Center)
-        .size(16);
+        let title = Text::new(self.app.info.name().to_string())
+            .width(Length::Fill)
+            .horizontal_alignment(HorizontalAlignment::Center)
+            .size(16);
         Some(
             Column::new()
                 .width(Length::Units(TOPLEVELS_WIDTH))
