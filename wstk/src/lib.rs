@@ -38,7 +38,7 @@ macro_rules! wstk_main {
     ( $fun:ident ) => {
         fn main() -> Result<(), Box<dyn std::error::Error>> {
             let main = glib::MainLoop::new(None, false);
-            glib::MainContext::default().acquire();
+            let _main_guard = Box::leak(Box::new(glib::MainContext::default().acquire()?));
             let (env, disp, queue) = make_env()?;
             let env: &'static Environment<Env> = Box::leak(Box::new(env));
             let disp: &'static Display = Box::leak(Box::new(disp));

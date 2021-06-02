@@ -38,15 +38,15 @@ pub struct MediaPlayerState {
 impl MediaPlayerState {
     fn query(common: &gio::DBusProxy, player: &gio::DBusProxy) -> Option<MediaPlayerState> {
         Some(MediaPlayerState {
-            desktop_entry: common.get_cached_property("DesktopEntry").and_then(|e| e.get()),
+            desktop_entry: common.cached_property("DesktopEntry").and_then(|e| e.get()),
             status: player
-                .get_cached_property("PlaybackStatus")
+                .cached_property("PlaybackStatus")
                 .and_then(|e| e.get::<String>())
                 .and_then(|e| PlaybackStatus::parse(&e))?,
-            can_prev: player.get_cached_property("CanGoPrevious").and_then(|e| e.get())?,
-            can_next: player.get_cached_property("CanGoNext").and_then(|e| e.get())?,
-            can_play: player.get_cached_property("CanPlay").and_then(|e| e.get())?,
-            can_pause: player.get_cached_property("CanPause").and_then(|e| e.get())?,
+            can_prev: player.cached_property("CanGoPrevious").and_then(|e| e.get())?,
+            can_next: player.cached_property("CanGoNext").and_then(|e| e.get())?,
+            can_play: player.cached_property("CanPlay").and_then(|e| e.get())?,
+            can_pause: player.cached_property("CanPause").and_then(|e| e.get())?,
         })
     }
 
@@ -121,7 +121,7 @@ impl MediaService {
             )
             .await
             .unwrap()
-            .get_body()
+            .body()
             .unwrap()
             .get::<(Vec<String>,)>()
             .unwrap()
@@ -207,7 +207,6 @@ impl MediaService {
                             let new_props = args[1]
                                 .get::<glib::Variant>()
                                 .unwrap()
-                                .unwrap()
                                 .get::<HashMap<String, glib::Variant>>()
                                 .unwrap();
                             if let Some(ref mut obj) = state.borrow_mut().get_mut(&name) {
@@ -226,7 +225,6 @@ impl MediaService {
                         .connect_local("g-properties-changed", true, move |args| {
                             let new_props = args[1]
                                 .get::<glib::Variant>()
-                                .unwrap()
                                 .unwrap()
                                 .get::<HashMap<String, glib::Variant>>()
                                 .unwrap();

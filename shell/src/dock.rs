@@ -1,6 +1,5 @@
 use crate::{style, svc, util::*};
 use futures::prelude::*;
-use gio::AppInfoExt; // DesktopAppInfoExt
 use std::cell::Cell;
 use wstk::*;
 

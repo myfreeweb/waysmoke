@@ -10,6 +10,16 @@ pub use futures::{channel::mpsc, future, prelude::*};
 
 use crate::{event_loop::*, run::*, surfaces::*};
 
+pub struct Clipboard {/*TODO*/}
+
+impl iced_native::Clipboard for Clipboard {
+    fn read(&self) -> Option<String> {
+        None
+    }
+
+    fn write(&mut self, _contents: String) {}
+}
+
 #[derive(Clone)]
 pub enum Action {
     DoNothing,
@@ -75,6 +85,7 @@ pub struct IcedInstance<T: IcedSurface> {
     queue: Vec<iced_native::Event>,
     messages: Vec<T::Message>,
     last_mouse_interaction: mouse::Interaction,
+    clipboard: Clipboard,
 }
 
 impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
@@ -85,14 +96,18 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         output: wl_output::WlOutput,
     ) -> IcedInstance<T> {
         let parent = DesktopInstance::new(&surface, env, display, &output);
+        let rwh = parent.raw_handle();
 
-        let mut compositor = WgpuCompositor::request(iced_wgpu::Settings {
-            ..iced_wgpu::Settings::default()
-        })
+        let mut compositor = WgpuCompositor::request(
+            iced_wgpu::Settings {
+                ..iced_wgpu::Settings::default()
+            },
+            Some(&rwh),
+        )
         .await
         .unwrap();
         let renderer = iced_wgpu::Renderer::new(compositor.create_backend());
-        let gpu_surface = compositor.create_surface(&parent.raw_handle());
+        let gpu_surface = compositor.create_surface(&rwh);
         parent.wl_surface.commit();
         parent.flush();
 
@@ -144,6 +159,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             queue: Vec::new(),
             messages: Vec::new(),
             last_mouse_interaction: mouse::Interaction::Idle,
+            clipboard: Clipboard {},
         }
     }
 
@@ -211,8 +227,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         user_interface.update(
             &self.queue.drain(..).collect::<Vec<_>>(),
             self.cursor_position,
-            None,
             &mut self.renderer,
+            &mut self.clipboard,
             &mut self.messages,
         );
         let viewport = iced_graphics::Viewport::with_physical_size(
@@ -535,7 +551,6 @@ impl<T: IcedSurface> Drop for IcedInstance<T> {
             tptr.release();
         }
         if let Some(kb) = self.keyboard_handle.take() {
-            kb.quick_assign(|_, _, _| ());
             kb.release();
         }
     }

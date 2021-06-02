@@ -64,17 +64,17 @@ where
         event: Event,
         layout: Layout<'_>,
         cursor_position: Point,
-        messages: &mut Vec<Message>,
         renderer: &Renderer,
-        clipboard: Option<&dyn Clipboard>,
+        clipboard: &mut dyn Clipboard,
+        messages: &mut Vec<Message>,
     ) -> event::Status {
         self.content.on_event(
             event,
             layout.children().next().unwrap(),
             cursor_position,
-            messages,
             renderer,
             clipboard,
+            messages,
         )
     }
 

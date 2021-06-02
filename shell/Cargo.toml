@@ -8,10 +8,10 @@ edition = "2018"
 [dependencies]
 lazy_static = "1"
 futures = "0.3"
-glib = "=0.10.0"
-gio = { version = "=0.9.0", features = ["v2_46"] }
+glib = "=0.14.0"
+gio = { version = "=0.14.0", features = ["v2_50"] }
 linicon = { version = "2", default-features = false }
-tree_magic_mini = "1"
-wgpu = "0.7"
+tree_magic_mini = "3"
+wgpu = "0.8"
 
 wstk = { path = "../wstk" }

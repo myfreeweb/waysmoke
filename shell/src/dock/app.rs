@@ -1,3 +1,4 @@
+use gio::prelude::AppInfoExt;
 use crate::{dock::*, style};
 use std::cell::Ref;
 
@@ -153,9 +154,8 @@ impl Docklet for AppDocklet {
         let title = Text::new(
             self.app
                 .info
-                .get_name()
-                .map(|x| x.to_owned())
-                .unwrap_or("<untitled>".to_owned()),
+                .name()
+                .to_string(),
         )
         .width(Length::Fill)
         .horizontal_alignment(HorizontalAlignment::Center)

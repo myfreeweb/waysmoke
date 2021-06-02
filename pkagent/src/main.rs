@@ -56,7 +56,7 @@ impl<'a> AuthAgent<'a> {
         display: &'static Display,
     ) -> AuthAgent<'a> {
         // the Authority wrapper does not take a bus connection, but it uses bus_get just like we do
-        let authority = polkit::Authority::get_async_future().await.unwrap();
+        let authority = polkit::Authority::async__future().await.unwrap();
         let (req_tx, req_rx) = mpsc::unbounded();
         let (cancel_tx, cancel_rx) = mpsc::unbounded();
 
@@ -177,7 +177,7 @@ async fn reg_object(
     req_tx: mpsc::UnboundedSender<AuthRequest>,
     cancel_tx: mpsc::UnboundedSender<String>,
 ) -> gio::RegistrationId {
-    let intf_agent = gio::DBusNodeInfo::new_for_xml(include_str!("org.freedesktop.PolicyKit1.AuthenticationAgent.xml"))
+    let intf_agent = gio::DBusNodeInfo::for_xml(include_str!("org.freedesktop.PolicyKit1.AuthenticationAgent.xml"))
         .unwrap()
         .lookup_interface("org.freedesktop.PolicyKit1.AuthenticationAgent")
         .unwrap();

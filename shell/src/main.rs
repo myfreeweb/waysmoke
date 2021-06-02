@@ -1,4 +1,4 @@
-use gio::ApplicationExt;
+use gio::prelude::ApplicationExt;
 use wstk::*;
 
 mod dock;
@@ -11,7 +11,7 @@ async fn main_(env: &Environment<Env>, display: &Display) {
         gio::ApplicationFlags::default(),
     );
     app.register::<gio::Cancellable>(None).unwrap();
-    let session_bus = app.get_dbus_connection().unwrap();
+    let session_bus = app.dbus_connection().unwrap();
 
     let services: &'static _ = Box::leak(Box::new(svc::Services {
         seat: env.get_all_seats()[0].detach(),

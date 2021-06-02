@@ -24,17 +24,17 @@ pub enum PowerDeviceState {
 
 impl PowerDeviceState {
     fn query(dev: &gio::DBusProxy) -> Option<PowerDeviceState> {
-        match dev.get_cached_property("Type")?.get::<u32>().unwrap() {
+        match dev.cached_property("Type")?.get::<u32>().unwrap() {
             1 => Some(PowerDeviceState::Line {
-                online: dev.get_cached_property("Online").unwrap().get().unwrap(),
+                online: dev.cached_property("Online").unwrap().get().unwrap(),
             }),
             2 => Some(PowerDeviceState::Battery {
-                icon_name: dev.get_cached_property("IconName").unwrap().get().unwrap(),
-                percentage: dev.get_cached_property("Percentage").unwrap().get().unwrap(),
-                energy: dev.get_cached_property("Energy").unwrap().get().unwrap(),
-                energy_empty: dev.get_cached_property("EnergyEmpty").unwrap().get().unwrap(),
-                energy_full: dev.get_cached_property("EnergyFull").unwrap().get().unwrap(),
-                energy_rate: dev.get_cached_property("EnergyRate").unwrap().get().unwrap(),
+                icon_name: dev.cached_property("IconName").unwrap().get().unwrap(),
+                percentage: dev.cached_property("Percentage").unwrap().get().unwrap(),
+                energy: dev.cached_property("Energy").unwrap().get().unwrap(),
+                energy_empty: dev.cached_property("EnergyEmpty").unwrap().get().unwrap(),
+                energy_full: dev.cached_property("EnergyFull").unwrap().get().unwrap(),
+                energy_rate: dev.cached_property("EnergyRate").unwrap().get().unwrap(),
             }),
             _ => None, // TODO more
         }
@@ -116,7 +116,6 @@ impl PowerService {
                 .connect_local("g-properties-changed", true, move |args| {
                     let new_props = args[1]
                         .get::<glib::Variant>()
-                        .unwrap()
                         .unwrap()
                         .get::<HashMap<String, glib::Variant>>()
                         .unwrap();

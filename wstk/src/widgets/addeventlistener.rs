@@ -67,9 +67,9 @@ where
         event: Event,
         layout: Layout<'_>,
         cursor_position: Point,
-        messages: &mut Vec<Message>,
         renderer: &Renderer,
-        clipboard: Option<&dyn Clipboard>,
+        clipboard: &mut dyn Clipboard,
+        messages: &mut Vec<Message>,
     ) -> event::Status {
         let bounds = layout.bounds();
         let is_mouse_over = bounds.contains(cursor_position);
@@ -89,9 +89,9 @@ where
             event,
             layout.children().next().unwrap(),
             cursor_position,
-            messages,
             renderer,
             clipboard,
+            messages,
         )
     }
 

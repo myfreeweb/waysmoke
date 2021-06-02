@@ -15,26 +15,26 @@ panic = "abort"
 
 [patch.crates-io]
 
-wayland-client    = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-cursor    = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-sys       = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-scanner   = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
-wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-client    = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-cursor    = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-sys       = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-scanner   = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-protocols = { git = "https://github.com/Smithay/wayland-rs" }
+# wayland-commons   = { git = "https://github.com/Smithay/wayland-rs" }
 
-gio  = { git = "https://github.com/gtk-rs/gio" }
-gio-sys = { git = "https://github.com/gtk-rs/sys" }
-glib = { git = "https://github.com/gtk-rs/glib" }
-glib-macros = { git = "https://github.com/gtk-rs/glib" }
-glib-sys = { git = "https://github.com/gtk-rs/sys" }
-gobject-sys = { git = "https://github.com/gtk-rs/sys" }
+gio  = { git = "https://github.com/gtk-rs/gtk-rs-core" }
+gio-sys = { git = "https://github.com/gtk-rs/gtk-rs-core" }
+glib = { git = "https://github.com/gtk-rs/gtk-rs-core" }
+glib-macros = { git = "https://github.com/gtk-rs/gtk-rs-core" }
+glib-sys = { git = "https://github.com/gtk-rs/gtk-rs-core" }
+gobject-sys = { git = "https://github.com/gtk-rs/gtk-rs-core" }
 
 # patch: avoid lifetime https://github.com/Smithay/client-toolkit/pull/163 + keyboard Main
 smithay-client-toolkit = { git = "https://github.com/unrelentingtech/client-toolkit", branch = "master" }
 
 # patch: transparency (config.composite_alpha_mode = hal::window::CompositeAlphaMode::PREMULTIPLIED)
-wgpu-core  = { git = "https://github.com/unrelentingtech/wgpu", branch = "v0.7-alpha" }
-wgpu-types = { git = "https://github.com/unrelentingtech/wgpu", branch = "v0.7-alpha" }
+wgpu-core  = { git = "https://github.com/unrelentingtech/wgpu", branch = "v0.8-alpha" }
+wgpu-types = { git = "https://github.com/unrelentingtech/wgpu", branch = "v0.8-alpha" }
 
 # crates.io releases don't have gio/glib versions locked to minor 0 (matching git >_<)
 polkit-sys = { git = "https://github.com/DankBSD/polkit-rs", branch = "trunk" }

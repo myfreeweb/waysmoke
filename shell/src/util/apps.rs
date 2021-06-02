@@ -4,7 +4,7 @@ use std::path::Path;
 
 lazy_static::lazy_static! {
     static ref USERPATH: String =
-        glib::get_user_data_dir().join("icons").to_str().unwrap().to_owned();
+        glib::user_data_dir().join("icons").to_str().unwrap().to_owned();
     static ref PATHS: Vec<&'static str> = vec![
         // linicon doesn't have the XDG_DATA_DIRS fallback paths from the spec
         "/usr/local/share/icons", "/usr/share/icons",
@@ -40,12 +40,12 @@ impl App {
     }
 
     pub fn icon(&self) -> Option<linicon::IconPath> {
-        let icon = self.info.get_icon()?;
+        let icon = self.info.icon()?;
         if let Some(ticon) = icon.downcast_ref::<gio::ThemedIcon>() {
             return themed_icon(ticon);
         }
         if let Some(ficon) = icon.downcast_ref::<gio::FileIcon>() {
-            let path = ficon.get_file()?.get_path()?;
+            let path: std::path::PathBuf = ficon.file().path()?;
             let icon_type = if tree_magic_mini::match_filepath("image/svg+xml", &path) {
                 linicon::IconType::SVG
             } else if tree_magic_mini::match_filepath("image/png", &path) {
@@ -73,7 +73,7 @@ impl App {
 
 fn themed_icon(icon: &gio::ThemedIcon) -> Option<linicon::IconPath> {
     use linicon::IconType::*;
-    let names = icon.get_names();
+    let names = icon.names();
     let name = names.iter().next()?;
     // TODO: get current scale from caller instead of assuming 2
     icons_iter(name, dock::ICON_SIZE, 2)
