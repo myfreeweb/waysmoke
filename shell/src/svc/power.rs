@@ -85,7 +85,7 @@ pub struct PowerState {
 }
 
 pub struct PowerService {
-    display_device: gio::DBusProxy,
+    // display_device: gio::DBusProxy,
     notifier: Rc<event_listener::Event>,
     state: Rc<RefCell<PowerState>>,
 }
@@ -129,7 +129,7 @@ impl PowerService {
         }
 
         PowerService {
-            display_device,
+            // display_device,
             notifier,
             state,
         }

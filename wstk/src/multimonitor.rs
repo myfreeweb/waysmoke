@@ -3,7 +3,7 @@ use crate::{
     surfaces::{output, wl_output, Env, Environment},
 };
 use async_trait::async_trait;
-use futures::{channel::mpsc, future::LocalBoxFuture, Future, FutureExt, StreamExt};
+use futures::{channel::mpsc, future::LocalBoxFuture, FutureExt, StreamExt};
 
 pub struct MultiMonitor<'a, T> {
     _osl: output::OutputStatusListener,

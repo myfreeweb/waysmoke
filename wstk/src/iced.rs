@@ -40,7 +40,7 @@ pub trait IcedSurface {
     type Message: std::fmt::Debug + Send;
 
     fn view(&mut self) -> Element<'_, Self::Message>;
-    fn input_region(&self, width: u32, height: u32) -> Option<Vec<Rectangle<u32>>> {
+    fn input_region(&self, _width: u32, _height: u32) -> Option<Vec<Rectangle<u32>>> {
         None
     }
     fn retained_images(&mut self) -> Vec<ImageHandle>;
