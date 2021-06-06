@@ -77,6 +77,7 @@ pub struct IcedInstance<T: IcedSurface> {
     cache: Cache,
     size: Size,
     cursor_position: Point,
+    keyboard_mods: keyboard::Modifiers,
     compositor: WgpuCompositor,
     renderer: <WgpuCompositor as Compositor>::Renderer,
     gpu_surface: <WgpuCompositor as Compositor>::Surface,
@@ -151,6 +152,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             cache: Cache::new(),
             size: Size::new(0.0, 0.0),
             cursor_position: Point::default(),
+            keyboard_mods: Default::default(),
             compositor,
             renderer,
             gpu_surface,
@@ -342,17 +344,37 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 }
                 self.kb_active = true;
             }
+            seat::keyboard::Event::Modifiers { modifiers, .. } => {
+                if !self.kb_active {
+                    return;
+                }
+                self.keyboard_mods = keyboard::Modifiers {
+                    shift: modifiers.shift,
+                    control: modifiers.ctrl,
+                    alt: modifiers.alt,
+                    logo: modifiers.logo,
+                };
+                self.queue
+                    .push(iced_native::Event::Keyboard(keyboard::Event::ModifiersChanged(
+                        self.keyboard_mods,
+                    )));
+            }
             seat::keyboard::Event::Key {
                 keysym, state, utf8, ..
             } => {
                 if !self.kb_active {
                     return;
                 }
-                let modifiers = Default::default();
                 if let Some(key_code) = convert_key(keysym) {
                     self.queue.push(iced_native::Event::Keyboard(match state {
-                        seat::keyboard::KeyState::Pressed => keyboard::Event::KeyPressed { key_code, modifiers },
-                        seat::keyboard::KeyState::Released => keyboard::Event::KeyReleased { key_code, modifiers },
+                        seat::keyboard::KeyState::Pressed => keyboard::Event::KeyPressed {
+                            key_code,
+                            modifiers: self.keyboard_mods,
+                        },
+                        seat::keyboard::KeyState::Released => keyboard::Event::KeyReleased {
+                            key_code,
+                            modifiers: self.keyboard_mods,
+                        },
                         _ => panic!("new button state?"),
                     }));
                 }
