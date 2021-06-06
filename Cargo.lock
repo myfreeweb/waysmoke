@@ -44,9 +44,9 @@ checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 
 [[package]]
 name = "approx"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
+checksum = "072df7202e63b127ab55acfe16ce97013d5b97bf160489336d3f1840fd78e99e"
 dependencies = [
  "num-traits",
 ]
@@ -878,7 +878,7 @@ dependencies = [
 [[package]]
 name = "gio"
 version = "0.14.0"
-source = "git+https://github.com/gtk-rs/gtk-rs-core#ce2e0cee83fc26f6b667e7e38031a2391d157736"
+source = "git+https://github.com/gtk-rs/gtk-rs-core#a6815e75a8803c71b8e7cf7d35bf322376e934d6"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -894,7 +894,7 @@ dependencies = [
 [[package]]
 name = "gio-sys"
 version = "0.14.0"
-source = "git+https://github.com/gtk-rs/gtk-rs-core#ce2e0cee83fc26f6b667e7e38031a2391d157736"
+source = "git+https://github.com/gtk-rs/gtk-rs-core#a6815e75a8803c71b8e7cf7d35bf322376e934d6"
 dependencies = [
  "glib-sys",
  "gobject-sys",
@@ -915,7 +915,7 @@ dependencies = [
 [[package]]
 name = "glib"
 version = "0.14.0"
-source = "git+https://github.com/gtk-rs/gtk-rs-core#ce2e0cee83fc26f6b667e7e38031a2391d157736"
+source = "git+https://github.com/gtk-rs/gtk-rs-core#a6815e75a8803c71b8e7cf7d35bf322376e934d6"
 dependencies = [
  "bitflags",
  "futures-channel",
@@ -933,7 +933,7 @@ dependencies = [
 [[package]]
 name = "glib-macros"
 version = "0.14.0"
-source = "git+https://github.com/gtk-rs/gtk-rs-core#ce2e0cee83fc26f6b667e7e38031a2391d157736"
+source = "git+https://github.com/gtk-rs/gtk-rs-core#a6815e75a8803c71b8e7cf7d35bf322376e934d6"
 dependencies = [
  "anyhow",
  "heck",
@@ -947,7 +947,7 @@ dependencies = [
 [[package]]
 name = "glib-sys"
 version = "0.14.0"
-source = "git+https://github.com/gtk-rs/gtk-rs-core#ce2e0cee83fc26f6b667e7e38031a2391d157736"
+source = "git+https://github.com/gtk-rs/gtk-rs-core#a6815e75a8803c71b8e7cf7d35bf322376e934d6"
 dependencies = [
  "libc",
  "system-deps",
@@ -995,9 +995,9 @@ dependencies = [
 
 [[package]]
 name = "glyph_brush_layout"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10bc06d530bf20c1902f1b02799ab7372ff43f6119770c49b0bc3f21bd148820"
+checksum = "15cf18cf985bd942f05e14552b63c9d08f7d0ed1ec79a977eb9747c9e065f497"
 dependencies = [
  "ab_glyph",
  "approx",
@@ -1007,7 +1007,7 @@ dependencies = [
 [[package]]
 name = "gobject-sys"
 version = "0.14.0"
-source = "git+https://github.com/gtk-rs/gtk-rs-core#ce2e0cee83fc26f6b667e7e38031a2391d157736"
+source = "git+https://github.com/gtk-rs/gtk-rs-core#a6815e75a8803c71b8e7cf7d35bf322376e934d6"
 dependencies = [
  "glib-sys",
  "libc",
@@ -1074,9 +1074,9 @@ dependencies = [
 
 [[package]]
 name = "heck"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87cbf45460356b7deeb5e3415b5563308c0a9b057c85e12b06ad551f98d0a6ac"
+checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
 dependencies = [
  "unicode-segmentation",
 ]
