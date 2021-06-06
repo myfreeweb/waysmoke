@@ -1,5 +1,5 @@
-use smithay_client_toolkit::{default_environment, new_default_environment};
 pub use smithay_client_toolkit::{
+    data_device,
     environment::{Environment, SimpleGlobal},
     get_surface_scale_factor, output,
     reexports::{
@@ -18,6 +18,7 @@ pub use smithay_client_toolkit::{
     },
     seat::{self, pointer, with_seat_data},
 };
+use smithay_client_toolkit::{default_environment, new_default_environment};
 use std::rc::Rc;
 
 use futures::channel::mpsc;

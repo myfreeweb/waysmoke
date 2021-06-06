@@ -3,21 +3,86 @@ pub use iced_native::Rectangle;
 use iced_native::{keyboard, mouse, Cache, Damage, Point, Size, UserInterface};
 use iced_wgpu::window::Compositor as WgpuCompositor;
 
-use std::{pin::Pin, time::Duration};
+use std::{
+    cell::RefCell,
+    io::{Read, Write},
+    pin::Pin,
+    sync::Arc,
+    time::Duration,
+};
 
 pub use async_trait::async_trait;
 pub use futures::{channel::mpsc, future, prelude::*};
 
 use crate::{event_loop::*, run::*, surfaces::*};
 
-pub struct Clipboard {/*TODO*/}
+pub struct Clipboard {
+    env: Environment<Env>,
+    seat: wl_seat::WlSeat,
+    last_enter_serial: u32,
+    received: Arc<RefCell<Option<String>>>,
+    paste_inject_tx: Arc<mpsc::UnboundedSender<()>>,
+}
 
 impl iced_native::Clipboard for Clipboard {
+    // This really should be asynchronous >_<
+    // As a workaround this code initiates on the first call and actually returns on the second call.
+    // To make the second call happen automatically, the callback injects a Ctrl-V keystroke :D
     fn read(&self) -> Option<String> {
+        if let Some(result) = self.received.borrow_mut().take() {
+            return Some(result);
+        }
+        self.env
+            .with_data_device(&self.seat, |device| {
+                device.with_selection(|offer| {
+                    let offer = match offer {
+                        Some(offer) => offer,
+                        None => {
+                            return;
+                        }
+                    };
+
+                    let has_text = offer.with_mime_types(|types| types.iter().any(|t| t == "text/plain;charset=utf-8"));
+                    if !has_text {
+                        return;
+                    }
+                    if let Ok(mut reader) = offer.receive("text/plain;charset=utf-8".into()) {
+                        use std::os::unix::io::AsRawFd;
+                        let received = self.received.clone();
+                        let inject_tx = self.paste_inject_tx.clone();
+                        glib::source::unix_fd_add_local(reader.as_raw_fd(), glib::IOCondition::IN, move |_fd, _ioc| {
+                            let mut txt = String::new();
+                            reader.read_to_string(&mut txt).unwrap();
+                            received.borrow_mut().replace(txt);
+                            inject_tx.unbounded_send(()).unwrap();
+                            glib::Continue(false)
+                        });
+                    }
+                });
+            })
+            .unwrap();
         None
     }
 
-    fn write(&mut self, _contents: String) {}
+    fn write(&mut self, contents: String) {
+        let data_source = self.env.new_data_source(
+            vec!["text/plain;charset=utf-8".into(), "UTF8_STRING".into()],
+            move |event, _| match event {
+                data_device::DataSourceEvent::Send { mut pipe, .. } => {
+                    if let Err(x) = write!(pipe, "{}", contents) {
+                        eprintln!("Could not send clipboard text: {:?}", x);
+                    }
+                }
+                _ => (),
+            },
+        );
+
+        self.env
+            .with_data_device(&self.seat, |device| {
+                device.set_selection(&Some(data_source), self.last_enter_serial);
+            })
+            .unwrap();
+    }
 }
 
 #[derive(Clone)]
@@ -78,6 +143,7 @@ pub struct IcedInstance<T: IcedSurface> {
     size: Size,
     cursor_position: Point,
     keyboard_mods: keyboard::Modifiers,
+    paste_inject_rx: mpsc::UnboundedReceiver<()>,
     compositor: WgpuCompositor,
     renderer: <WgpuCompositor as Compositor>::Renderer,
     gpu_surface: <WgpuCompositor as Compositor>::Surface,
@@ -96,7 +162,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         display: Display,
         output: wl_output::WlOutput,
     ) -> IcedInstance<T> {
-        let parent = DesktopInstance::new(&surface, env, display, &output);
+        let parent = DesktopInstance::new(&surface, env.clone(), display, &output);
         let rwh = parent.raw_handle();
 
         let mut compositor = WgpuCompositor::request(
@@ -133,6 +199,8 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             None
         };
 
+        let (paste_inject_tx, paste_inject_rx) = futures::channel::mpsc::unbounded();
+
         IcedInstance {
             parent,
             surface,
@@ -161,7 +229,14 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
             queue: Vec::new(),
             messages: Vec::new(),
             last_mouse_interaction: mouse::Interaction::Idle,
-            clipboard: Clipboard {},
+            clipboard: Clipboard {
+                env,
+                seat: seat.detach(),
+                last_enter_serial: 0,
+                received: Arc::new(RefCell::new(None)),
+                paste_inject_tx: Arc::new(paste_inject_tx),
+            },
+            paste_inject_rx,
         }
     }
 
@@ -332,11 +407,12 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
 
     async fn on_keyboard_event(&mut self, event: seat::keyboard::Event) {
         match event {
-            seat::keyboard::Event::Enter { surface, .. } => {
+            seat::keyboard::Event::Enter { surface, serial, .. } => {
                 if self.parent.wl_surface.detach() != surface {
                     return;
                 }
                 self.kb_active = true;
+                self.clipboard.last_enter_serial = serial;
             }
             seat::keyboard::Event::Leave { surface, .. } => {
                 if self.parent.wl_surface.detach() != surface {
@@ -395,6 +471,43 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
         }
     }
 
+    async fn inject_paste(&mut self) {
+        if !self.kb_active {
+            return;
+        }
+        let modifiers = keyboard::Modifiers {
+            shift: false,
+            control: true,
+            alt: false,
+            logo: false,
+        };
+        self.queue
+            .push(iced_native::Event::Keyboard(keyboard::Event::ModifiersChanged(
+                modifiers,
+            )));
+        // release first because the actual user V might still be held
+        self.queue
+            .push(iced_native::Event::Keyboard(keyboard::Event::KeyReleased {
+                key_code: keyboard::KeyCode::V,
+                modifiers,
+            }));
+        self.queue
+            .push(iced_native::Event::Keyboard(keyboard::Event::KeyPressed {
+                key_code: keyboard::KeyCode::V,
+                modifiers,
+            }));
+        self.queue
+            .push(iced_native::Event::Keyboard(keyboard::Event::KeyReleased {
+                key_code: keyboard::KeyCode::V,
+                modifiers,
+            }));
+        self.queue
+            .push(iced_native::Event::Keyboard(keyboard::Event::ModifiersChanged(
+                self.keyboard_mods,
+            )));
+        self.render().await;
+    }
+
     async fn on_pointer_event(&mut self, event: wl_pointer::Event) {
         match event {
             wl_pointer::Event::Enter { surface, serial, .. } => {
@@ -405,6 +518,7 @@ impl<T: DesktopSurface + IcedSurface> IcedInstance<T> {
                 self.leave_timeout = None;
                 self.surface.on_pointer_enter().await;
                 self.last_ptr_serial = Some(serial);
+                self.clipboard.last_enter_serial = serial;
                 self.apply_mouse_interaction(self.last_mouse_interaction);
             }
             wl_pointer::Event::Leave { surface, serial, .. } => {
@@ -548,6 +662,7 @@ impl<T: DesktopSurface + IcedSurface> Runnable for IcedInstance<T> {
             ev = MaybeFuture::new(this.ptr.as_mut().map(|p| p.next())) => this.on_pointer_event(ev).await,
             ev = MaybeFuture::new(this.touch.as_mut().map(|p| p.next())) => this.on_touch_event(ev).await,
             sc = this.parent.scale_rx.select_next_some() => this.on_scale(sc).await,
+            () = this.paste_inject_rx.select_next_some() => this.inject_paste().await,
             ac = this.surface.run().fuse() => match ac {
                 Action::DoNothing => (),
                 Action::Rerender => {
